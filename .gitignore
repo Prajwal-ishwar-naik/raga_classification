@@ -1,0 +1,14 @@
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.gemini/
+*.mp3
+*.wav
+*.ogg
+build/
+dist/
+.env
+.DS_Store

@@ -1,0 +1,8 @@
+Indian Classical Raga -
+
+Concept-
+
+Neuro-Symbolic systems, or "Scholar-Listeners," combine neural networks with logical rulebooks to identify Raga components with high accuracy, whereas CNN/LSTM models act as "Instinctive Listeners" that rely solely on pattern matching. While CNNs act as unexplainable black boxes, the Neuro-Symbolic approach offers explainable, self-correcting music analysis based on grammatical rules.
+
+
+The system operates like a digital musicologist. It first "hears" the notes using AI, then "reasons" about them using a rulebook.

@@ -1,0 +1,639 @@
+[
+  {
+    "file": "AhirBhairav_UP",
+    "duration_s": 101.7,
+    "tonic_hz": 187.15,
+    "tempo_bpm": 125.0,
+    "voiced_pct": 79.6,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 1.017,
+      "alternatives": [
+        [
+          "Desh",
+          1.003
+        ],
+        [
+          "Bageshri",
+          0.97
+        ],
+        [
+          "AhirBhairav",
+          0.964
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "AlhaiyaBilawal",
+    "duration_s": 164.18,
+    "tonic_hz": 186.07,
+    "tempo_bpm": 125.0,
+    "voiced_pct": 85.8,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.974,
+      "alternatives": [
+        [
+          "Desh",
+          0.952
+        ],
+        [
+          "Bageshri",
+          0.931
+        ],
+        [
+          "Bhairav",
+          0.907
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Bhairav_UP",
+    "duration_s": 235.26,
+    "tonic_hz": 223.85,
+    "tempo_bpm": 125.0,
+    "voiced_pct": 84.1,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Desh",
+      "confidence": 0.972,
+      "alternatives": [
+        [
+          "Bihaag",
+          0.969
+        ],
+        [
+          "Bhatiyar",
+          0.965
+        ],
+        [
+          "Sohini",
+          0.963
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Night (9 PM - 12 AM)",
+      "season": "Varsha (Monsoon)",
+      "mood": "Devotional - Nostalgic - Longing"
+    },
+    "therapeutic_insights": [
+      "Evokes feelings of homeland and belonging.",
+      "Supports grief work and homesickness.",
+      "Generally uplifting despite its emotional depth."
+    ]
+  },
+  {
+    "file": "ShuddhaSaarang_UP",
+    "duration_s": 106.24,
+    "tonic_hz": 647.93,
+    "tempo_bpm": 117.19,
+    "voiced_pct": 82.6,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Desh",
+      "confidence": 1.027,
+      "alternatives": [
+        [
+          "Bihaag",
+          1.001
+        ],
+        [
+          "AhirBhairav",
+          0.983
+        ],
+        [
+          "Kedar",
+          0.983
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Night (9 PM - 12 AM)",
+      "season": "Varsha (Monsoon)",
+      "mood": "Devotional - Nostalgic - Longing"
+    },
+    "therapeutic_insights": [
+      "Evokes feelings of homeland and belonging.",
+      "Supports grief work and homesickness.",
+      "Generally uplifting despite its emotional depth."
+    ]
+  },
+  {
+    "file": "Bageshri_UP",
+    "duration_s": 108.96,
+    "tonic_hz": 241.3,
+    "tempo_bpm": 117.19,
+    "voiced_pct": 78.2,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.995,
+      "alternatives": [
+        [
+          "Desh",
+          0.958
+        ],
+        [
+          "Yaman",
+          0.938
+        ],
+        [
+          "Sohini",
+          0.936
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Bhatiyar_UP",
+    "duration_s": 89.0,
+    "tonic_hz": 221.27,
+    "tempo_bpm": 110.29,
+    "voiced_pct": 84.3,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Desh",
+      "confidence": 1.001,
+      "alternatives": [
+        [
+          "Bihaag",
+          0.986
+        ],
+        [
+          "AhirBhairav",
+          0.972
+        ],
+        [
+          "Kedar",
+          0.972
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Night (9 PM - 12 AM)",
+      "season": "Varsha (Monsoon)",
+      "mood": "Devotional - Nostalgic - Longing"
+    },
+    "therapeutic_insights": [
+      "Evokes feelings of homeland and belonging.",
+      "Supports grief work and homesickness.",
+      "Generally uplifting despite its emotional depth."
+    ]
+  },
+  {
+    "file": "Bihaag_UP",
+    "duration_s": 58.24,
+    "tonic_hz": 185.0,
+    "tempo_bpm": 125.0,
+    "voiced_pct": 83.7,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 1.013,
+      "alternatives": [
+        [
+          "Desh",
+          0.991
+        ],
+        [
+          "Bageshri",
+          0.983
+        ],
+        [
+          "AlhaiyaBilawal",
+          0.939
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Chandrakauns_UP",
+    "duration_s": 96.7,
+    "tonic_hz": 280.4,
+    "tempo_bpm": 187.5,
+    "voiced_pct": 86.1,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 1.011,
+      "alternatives": [
+        [
+          "Desh",
+          0.966
+        ],
+        [
+          "Sohini",
+          0.953
+        ],
+        [
+          "Bhatiyar",
+          0.949
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Desh_UP",
+    "duration_s": 61.68,
+    "tonic_hz": 277.18,
+    "tempo_bpm": 117.19,
+    "voiced_pct": 85.0,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.977,
+      "alternatives": [
+        [
+          "Desh",
+          0.95
+        ],
+        [
+          "Bhairav",
+          0.95
+        ],
+        [
+          "Sohini",
+          0.941
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Kedar_UP",
+    "duration_s": 69.52,
+    "tonic_hz": 196.0,
+    "tempo_bpm": 144.23,
+    "voiced_pct": 86.8,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.998,
+      "alternatives": [
+        [
+          "Desh",
+          0.992
+        ],
+        [
+          "Yaman",
+          0.956
+        ],
+        [
+          "AlhaiyaBilawal",
+          0.939
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Malkauns_UP",
+    "duration_s": 80.8,
+    "tonic_hz": 231.74,
+    "tempo_bpm": 144.23,
+    "voiced_pct": 87.8,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 1.034,
+      "alternatives": [
+        [
+          "Desh",
+          1.025
+        ],
+        [
+          "AlhaiyaBilawal",
+          0.972
+        ],
+        [
+          "Bageshri",
+          0.968
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Sohini_UP",
+    "duration_s": 91.82,
+    "tonic_hz": 293.66,
+    "tempo_bpm": 133.93,
+    "voiced_pct": 86.2,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.947,
+      "alternatives": [
+        [
+          "Desh",
+          0.932
+        ],
+        [
+          "Sohini",
+          0.903
+        ],
+        [
+          "Bhairav",
+          0.893
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  },
+  {
+    "file": "Yaman_UP",
+    "duration_s": 187.04,
+    "tonic_hz": 205.27,
+    "tempo_bpm": 144.23,
+    "voiced_pct": 81.1,
+    "detected_swaras": [
+      "Sa",
+      "re",
+      "Re",
+      "ga",
+      "Ga",
+      "Ma",
+      "Ma'",
+      "Pa",
+      "dha",
+      "Dha",
+      "ni",
+      "Ni"
+    ],
+    "classification": {
+      "predicted_raga": "Bihaag",
+      "confidence": 0.991,
+      "alternatives": [
+        [
+          "Desh",
+          0.964
+        ],
+        [
+          "Sohini",
+          0.961
+        ],
+        [
+          "Bhairav",
+          0.958
+        ]
+      ]
+    },
+    "raga_properties": {
+      "time_of_day": "Late Night (9 PM - 12 AM)",
+      "season": "All seasons",
+      "mood": "Sweet - Tender - Romantic"
+    },
+    "therapeutic_insights": [
+      "Promotes feelings of love and sweetness.",
+      "Mild antidepressant effect in evening.",
+      "Enhances creative and artistic sensitivity."
+    ]
+  }
+]
