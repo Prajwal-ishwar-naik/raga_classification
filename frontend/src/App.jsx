@@ -11,7 +11,12 @@ import {
   Sparkles,
   ChevronRight,
   TrendingUp,
-  Files
+  Files,
+  Heart,
+  Focus,
+  Activity,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -60,7 +65,7 @@ const BulkResultsView = ({ data, files }) => {
   const dayCount = data.filter(r => r.prediction.includes('Day')).length;
   const nightCount = data.filter(r => r.prediction.includes('Night')).length;
   const [expandedIndex, setExpandedIndex] = useState(null);
-  const [viewMode, setViewMode] = useState('narrative'); // 'narrative' or 'spectrogram'
+  const [viewMode, setViewMode] = useState('narrative'); // 'narrative', 'spectrogram', or 'therapy'
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bulk-view">
@@ -116,7 +121,14 @@ const BulkResultsView = ({ data, files }) => {
                     onClick={() => { setExpandedIndex(expandedIndex === i && viewMode === 'spectrogram' ? null : i); setViewMode('spectrogram'); }}
                     style={{ background: expandedIndex === i && viewMode === 'spectrogram' ? 'var(--primary)' : 'rgba(255,255,255,0.05)' }}
                   >
-                    Spectrogram Graph
+                    Visual Analytics
+                  </button>
+                  <button 
+                    className={`summarize-btn ${expandedIndex === i && viewMode === 'therapy' ? 'active' : ''}`}
+                    onClick={() => { setExpandedIndex(expandedIndex === i && viewMode === 'therapy' ? null : i); setViewMode('therapy'); }}
+                    style={{ background: expandedIndex === i && viewMode === 'therapy' ? 'var(--accent)' : 'rgba(176, 141, 72, 0.1)', color: expandedIndex === i && viewMode === 'therapy' ? 'white' : 'var(--accent)' }}
+                  >
+                    Therapy Analysis
                   </button>
                 </div>
               </div>
@@ -134,10 +146,50 @@ const BulkResultsView = ({ data, files }) => {
                           <div className="label"><Sparkles size={14} style={{display:'inline', marginRight:'4px'}}/> AI Reasoned Analysis</div>
                           <p className="narrative-text-small">{item.narrative}</p>
                         </div>
-                      ) : (
+                      ) : viewMode === 'spectrogram' ? (
                         <div className="visual-block" style={{ padding: '1rem' }}>
                           <span className="label" style={{marginBottom: '0.5rem', display: 'block'}}>Acoustic Spectrogram Signature</span>
                           {item.spectrogram ? <SpectrogramView data={item.spectrogram} /> : <p className="narrative-text-small">Spectrogram data unavailable for this segment.</p>}
+                          
+                          {item.image_url && (
+                            <div className="analysis-visualization" style={{ marginTop: '1.5rem' }}>
+                              <span className="label" style={{marginBottom: '0.5rem', display: 'block'}}>Visual Analysis Dashboard</span>
+                              <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
+                                <img src={item.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block', margin: '0 auto' }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="therapy-block" style={{ padding: '1rem' }}>
+                          <span className="label" style={{marginBottom: '1rem', display: 'block'}}>🧘 Wellness & Therapy Profile</span>
+                          {item.therapy ? (
+                            <div className="bulk-therapy-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                              <div className="scores-sub-block">
+                                <div className="score-item" style={{marginBottom: '0.8rem'}}>
+                                  <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', fontWeight:700}}><span>Calm</span><span>{item.therapy.therapy_scores.calm_score}/10</span></div>
+                                  <div className="progress-bg"><div className="progress-fill calm" style={{width:`${item.therapy.therapy_scores.calm_score*10}%`}}></div></div>
+                                </div>
+                                <div className="score-item" style={{marginBottom: '0.8rem'}}>
+                                  <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', fontWeight:700}}><span>Energy</span><span>{item.therapy.therapy_scores.energy_score}/10</span></div>
+                                  <div className="progress-bg"><div className="progress-fill energy" style={{width:`${item.therapy.therapy_scores.energy_score*10}%`}}></div></div>
+                                </div>
+                                <div className="score-item">
+                                  <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', fontWeight:700}}><span>Focus</span><span>{item.therapy.therapy_scores.focus_score}/10</span></div>
+                                  <div className="progress-bg"><div className="progress-fill focus" style={{width:`${item.therapy.therapy_scores.focus_score*10}%`}}></div></div>
+                                </div>
+                              </div>
+                              <div className="rec-sub-block">
+                                <div style={{background:'rgba(255,255,255,0.05)', padding:'0.8rem', borderRadius:'8px', border:'1px solid var(--border)'}}>
+                                  <div style={{fontSize:'0.7rem', color:'var(--text-dim)', marginBottom:'0.2rem'}}>Primary Recommendation</div>
+                                  <div style={{fontWeight:800, color:'var(--primary)', fontSize:'0.9rem'}}>{item.therapy.recommendation.primary}</div>
+                                </div>
+                                <ul style={{marginTop:'0.8rem', fontSize:'0.8rem', paddingLeft:'1rem', color:'var(--text-main)'}}>
+                                  {item.therapy.explanation.slice(0,2).map((e, idx) => <li key={idx}>{e}</li>)}
+                                </ul>
+                              </div>
+                            </div>
+                          ) : <p className="narrative-text-small">Therapy data not available.</p>}
                         </div>
                       )}
                     </div>
@@ -159,6 +211,7 @@ const App = () => {
   const [bulkResults, setBulkResults] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(null);
+  const [showTherapy, setShowTherapy] = useState(false);
   
   const waveformRef = useRef(null);
   const wavesurfer = useRef(null);
@@ -261,18 +314,142 @@ const App = () => {
 
         <AnimatePresence>
           {result && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="result-container single">
-              <div className="neural-intel-box card">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="result-container"
+            >
+              <div className="card neural-intel-box">
+                
+                {/* --- NEW SECTION: THERAPY ANALYSIS (TOGGLEABLE) --- */}
+                <AnimatePresence>
+                  {showTherapy && result.therapy && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }} 
+                      animate={{ opacity: 1, height: 'auto', marginBottom: '2rem' }} 
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      className="therapy-analysis-card"
+                      style={{ 
+                        overflow: 'hidden',
+                        padding: '2rem', 
+                        background: 'rgba(176, 141, 72, 0.05)', 
+                        borderRadius: '30px', 
+                        border: '1px solid var(--primary)' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <span style={{ fontSize: '1.5rem' }}>🧘</span>
+                        <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.75rem' }}>Therapy Analysis</h2>
+                      </div>
+
+                      <div className="therapy-scores-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                        <div className="score-block">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+                            <span>Calm Score</span>
+                            <span>{result.therapy.therapy_scores.calm_score}/10</span>
+                          </div>
+                          <div className="progress-bg"><div className="progress-fill calm" style={{ width: `${result.therapy.therapy_scores.calm_score * 10}%` }}></div></div>
+                        </div>
+                        <div className="score-block">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+                            <span>Energy Score</span>
+                            <span>{result.therapy.therapy_scores.energy_score}/10</span>
+                          </div>
+                          <div className="progress-bg"><div className="progress-fill energy" style={{ width: `${result.therapy.therapy_scores.energy_score * 10}%` }}></div></div>
+                        </div>
+                        <div className="score-block">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+                            <span>Focus Score</span>
+                            <span>{result.therapy.therapy_scores.focus_score}/10</span>
+                          </div>
+                          <div className="progress-bg"><div className="progress-fill focus" style={{ width: `${result.therapy.therapy_scores.focus_score * 10}%` }}></div></div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                        <div className="recommendation-panel">
+                          <div style={{ marginBottom: '1.5rem' }}>
+                            <span className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>Primary Recommendation</span>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary)', background: 'white', padding: '1rem', borderRadius: '15px', border: '1px solid var(--border)' }}>
+                              {result.therapy.recommendation.primary}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>Secondary Recommendations</span>
+                            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-dim)', fontWeight: 600 }}>
+                              {result.therapy.recommendation.secondary.map((rec, i) => (
+                                <li key={i} style={{ marginBottom: '0.25rem' }}>{rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="explanation-panel">
+                          <span className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>Therapeutic Explanation</span>
+                          <div style={{ background: 'rgba(255,255,255,0.5)', padding: '1.25rem', borderRadius: '15px', border: '1px solid var(--border)' }}>
+                            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.5' }}>
+                              {result.therapy.explanation.map((point, i) => (
+                                <li key={i} style={{ marginBottom: '0.5rem' }}>{point}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="result-header">
                   <div>
                     <span className="label">Neural Prediction</span>
                     <h2 className="prediction-display">{result.neural_prediction}</h2>
                   </div>
-                  <div className="confidence-ring">
-                    <span className="conf-value">{(result.neural_confidence * 100).toFixed(0)}%</span>
-                    <span className="conf-label">Confidence</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+                    <div className="confidence-ring">
+                      <span className="conf-value">{(result.neural_confidence * 100).toFixed(0)}%</span>
+                      <span className="conf-label">Confidence</span>
+                    </div>
+                    <button 
+                      onClick={() => setShowTherapy(!showTherapy)}
+                      className="therapy-toggle-btn"
+                      style={{
+                        padding: '0.6rem 1.2rem',
+                        background: showTherapy ? 'var(--accent)' : 'var(--primary)',
+                        color: showTherapy ? 'white' : 'black',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: '800',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(176, 141, 72, 0.2)'
+                      }}
+                    >
+                      <Heart size={16} fill={showTherapy ? 'white' : 'transparent'} />
+                      {showTherapy ? 'Hide Therapy Analysis' : 'View Therapy Analysis'}
+                    </button>
                   </div>
                 </div>
+
+                {/* --- LEGACY COMPREHENSIVE DASHBOARD (PROMINENT) --- */}
+                {result.image_url && (
+                  <div className="analysis-visualization card" style={{ marginTop: '0rem', marginBottom: '2rem' }}>
+                    <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Layers size={16} /> Visual Analysis Dashboard
+                      </div>
+                      <a href={result.image_url} download={`raga_analysis_${result.detected_raag}.png`} className="download-btn" style={{ padding: '0.4rem 0.8rem', background: 'var(--primary)', color: '#000', borderRadius: '4px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        Download PNG
+                      </a>
+                    </div>
+                    <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
+                      <img src={result.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block' }} />
+                    </div>
+                  </div>
+                )}
 
                 <div className="neural-visuals">
                   <div className="visual-block">
@@ -305,17 +482,98 @@ const App = () => {
                       ))}
                     </div>
 
-                    <div className="logic-message">
+                    {result.metadata.advanced_features && result.metadata.advanced_features.most_frequent && (
+                      <div className="feature-summary" style={{ marginTop: '1rem', padding: '0.8rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Most Frequent Note</div>
+                            <div style={{ fontWeight: 600, color: 'var(--primary)' }}>{result.metadata.advanced_features.most_frequent}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Vadi Note</div>
+                            <div style={{ fontWeight: 600, color: '#4db8ff' }}>{result.metadata.advanced_features.vadi}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="logic-message" style={{ marginTop: '1rem' }}>
                       {result.report[0] || "Aligned with traditional musicology."}
                     </div>
                   </div>
                 </div>
 
-                <div className="narrative-section card">
+
+                <div className="narrative-section card" style={{ marginTop: '1.5rem' }}>
                   <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Sparkles size={16} /> Reasoning Narrative
                   </div>
                   <p className="narrative-text">{result.narrative}</p>
+                </div>
+
+
+                {/* --- NEW: MUSICAL FEATURE SUMMARY --- */}
+                <div className="feature-summary-grid" style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                  <div className="feature-card card">
+                    <span className="label">Dominant Swara</span>
+                    <div className="val">{result.metadata.advanced_features.most_frequent || 'N/A'}</div>
+                  </div>
+                  <div className="feature-card card">
+                    <span className="label">Total Swaras</span>
+                    <div className="val">{result.metadata.swaras.length}</div>
+                  </div>
+                  <div className="feature-card card">
+                    <span className="label">Tempo (BPM)</span>
+                    <div className="val">{result.metadata.advanced_features.tempo || 'N/A'}</div>
+                  </div>
+                  <div className="feature-card card">
+                    <span className="label">Pitch Range</span>
+                    <div className="val">{Math.round(result.metadata.advanced_features.pitch_range || 0)} Hz</div>
+                  </div>
+                  <div className="feature-card card">
+                    <span className="label">Gamakas</span>
+                    <div className="val">{result.metadata.advanced_features.gamakas?.slides === 'Yes' ? 'Vibrant' : 'Steady'}</div>
+                  </div>
+                </div>
+
+                {/* Note Transitions */}
+                {result.metadata.advanced_features.transitions && (
+                  <div className="transitions-card card" style={{ marginTop: '1rem' }}>
+                    <span className="label" style={{ marginBottom: '0.8rem', display: 'block' }}>Key Melodic Transitions</span>
+                    <div className="transition-display" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                      <div className="main-transition">
+                        <span className="t-label">Most Common</span>
+                        <div className="t-val">{result.metadata.advanced_features.transitions.most_common}</div>
+                      </div>
+                      <div className="t-pct">
+                        <div className="pct-circle">{result.metadata.advanced_features.transitions.pct}%</div>
+                        <span className="t-label">Frequency</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- NEW: DETAILED VISUALIZATIONS --- */}
+                <div className="detailed-visuals-grid" style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  {result.pitch_contour_url && (
+                    <div className="visual-card card">
+                      <span className="label" style={{ marginBottom: '1rem', display: 'block' }}>Pitch Contour Analysis</span>
+                      <img src={result.pitch_contour_url} alt="Pitch Contour" style={{ width: '100%', borderRadius: '4px' }} />
+                    </div>
+                  )}
+                  {result.spectrogram_url && (
+                    <div className="visual-card card">
+                      <span className="label" style={{ marginBottom: '1rem', display: 'block' }}>Spectral Fingerprint</span>
+                      <img src={result.spectrogram_url} alt="Spectrogram" style={{ width: '100%', borderRadius: '4px' }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Disclaimer */}
+                <div className="disclaimer-footer" style={{ marginTop: '2rem', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', opacity: 0.6 }}>
+                  <p style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                    <AlertCircle size={12} /> This system provides recommendations based on audio features and is not a medical diagnosis tool.
+                  </p>
                 </div>
               </div>
             </motion.div>

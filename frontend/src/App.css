@@ -468,6 +468,181 @@ header {
   line-height: 1.6;
   color: var(--accent);
   margin-top: 0.5rem;
+  white-space: pre-wrap;
 }
 
 .text-primary { color: var(--primary); }
+
+.narrative-text {
+  white-space: pre-wrap;
+}
+
+/* --- NEW: THERAPY & VISUALIZATION STYLES --- */
+.therapy-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 2rem;
+}
+
+.sub-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.score-item {
+  margin-bottom: 1.25rem;
+}
+
+.score-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+}
+
+.progress-bg {
+  height: 8px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.progress-fill.calm { background: linear-gradient(90deg, #4db8ff, #32ff7e); }
+.progress-fill.energy { background: linear-gradient(90deg, #ff9f43, #ff4757); }
+.progress-fill.focus { background: linear-gradient(90deg, #7158e2, #cd84f1); }
+
+.rec-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.rec-badge.primary {
+  background: rgba(176, 141, 72, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(176, 141, 72, 0.2);
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag.secondary {
+  background: #f1f3f5;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.explanation-list {
+  list-style: none;
+}
+
+.explanation-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.explanation-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.therapy-tag-chip {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+.therapy-tag-chip.calm { background: #e3f2fd; color: #1e88e5; }
+.therapy-tag-chip.meditative { background: #f1f8e9; color: #558b2f; }
+.therapy-tag-chip.relaxing { background: #e8f5e9; color: #2e7d32; }
+.therapy-tag-chip.uplifting { background: #fffde7; color: #fbc02d; }
+.therapy-tag-chip.vibrant { background: #fff3e0; color: #ef6c00; }
+.therapy-tag-chip.energetic { background: #fbe9e7; color: #d84315; }
+.therapy-tag-chip.focus { background: #f3e5f5; color: #8e24aa; }
+.therapy-tag-chip.concentration { background: #ede7f6; color: #5e35b1; }
+
+.feature-card {
+  padding: 1.25rem !important;
+  text-align: center;
+  border-radius: 20px !important;
+}
+
+.feature-card .val {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--accent);
+  margin-top: 0.5rem;
+}
+
+.transitions-card .t-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 800;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.transitions-card .t-val {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.pct-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.visual-card img {
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 768px) {
+  .therapy-grid, .detailed-visuals-grid {
+    grid-template-columns: 1fr;
+  }
+}
