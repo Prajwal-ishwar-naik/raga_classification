@@ -1,12 +1,12 @@
 :root {
-  --primary: #b08d48; /* Sophisticated Gold */
-  --accent: #2c3e50; /* Deep Navy */
-  --bg-main: #f8f9fa; /* Light Soft Gray */
-  --bg-card: #ffffff;
-  --text-main: #2d3436;
-  --text-dim: #636e72;
-  --border: rgba(0,0,0,0.08);
-  --shadow: 0 10px 30px rgba(176, 141, 72, 0.08);
+  --primary: #f59e0b; /* Amber / Orange */
+  --accent: #f3f4f6; /* Off-white for headers (not blue) */
+  --bg-main: #1e1f22; /* Brighter Dark Gray */
+  --bg-card: #2b2d31; /* Brighter Card Gray */
+  --text-main: #e4e4e7;
+  --text-dim: #a1a1aa;
+  --border: rgba(255,255,255,0.08);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -70,7 +70,7 @@ header {
 
 .glass-card {
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(43, 45, 49, 0.6);
 }
 
 .upload-zone {
@@ -78,7 +78,7 @@ header {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 3px dashed rgba(176, 141, 72, 0.2);
+  border: 3px dashed var(--text-dim);
   border-radius: 32px;
   padding: 6rem 2rem;
   cursor: pointer;
@@ -88,7 +88,7 @@ header {
 .upload-zone:hover {
   transform: scale(1.02);
   border-color: var(--primary);
-  background: rgba(176, 141, 72, 0.02);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .upload-icon {
@@ -104,8 +104,10 @@ header {
 }
 
 .upload-subtitle {
-  color: var(--text-dim);
-  font-size: 1rem;
+  color: var(--text-main);
+  font-size: 1.05rem;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
 /* Analyzer View */
@@ -115,7 +117,7 @@ header {
   gap: 1.5rem;
   margin-bottom: 2.5rem;
   padding: 1rem 1.5rem;
-  background: #f1f3f5;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 20px;
   font-size: 0.95rem;
   color: var(--accent);
@@ -141,7 +143,7 @@ header {
 .waveform-box {
   margin-bottom: 3rem;
   padding: 1.5rem;
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 24px;
 }
@@ -158,7 +160,7 @@ header {
   border-radius: 35px;
   border: none;
   background: var(--accent);
-  color: white;
+  color: #0f1115;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,7 +172,7 @@ header {
 
 .analyze-btn {
   background: var(--primary);
-  color: white;
+  color: #0f1115;
   border: none;
   padding: 0 4rem;
   border-radius: 35px;
@@ -198,7 +200,7 @@ header {
 
 .neural-intel-box {
   border: 2px solid var(--primary);
-  background: white;
+  background: var(--bg-card);
 }
 
 .result-header {
@@ -271,7 +273,7 @@ header {
 }
 
 .bulk-table {
-  background: white;
+  background: var(--bg-card);
   padding: 0;
   overflow: hidden;
 }
@@ -279,8 +281,8 @@ header {
 .table-header {
   display: grid;
   grid-template-columns: 1fr 1fr 300px;
-  background: var(--accent);
-  color: white;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
   padding: 1rem 2rem;
   font-weight: 700;
   font-size: 0.8rem;
@@ -316,8 +318,8 @@ header {
   width: fit-content;
 }
 
-.row-pred.day { background: #fff4e6; color: #fd7e14; }
-.row-pred.night { background: #e7f5ff; color: #1971c2; }
+.row-pred.day { background: rgba(253, 126, 20, 0.2); color: #ffb067; }
+.row-pred.night { background: rgba(25, 113, 194, 0.2); color: #74c0fc; }
 
 .row-conf {
   text-align: right;
@@ -372,7 +374,7 @@ header {
 
 .hybrid-badge {
   background: var(--primary);
-  color: white;
+  color: #0f1115;
   padding: 2px 10px;
   border-radius: 20px;
   font-size: 0.65rem;
@@ -400,7 +402,7 @@ header {
 }
 
 .swara-chip {
-  background: white;
+  background: var(--bg-card);
   border: 1.5px solid var(--border);
   padding: 6px 14px;
   border-radius: 12px;
@@ -423,7 +425,7 @@ header {
 }
 
 .row-expansion {
-  background: white;
+  background: var(--bg-card);
   overflow: hidden;
   border-bottom: 1px solid var(--border);
 }
@@ -444,7 +446,7 @@ header {
 }
 
 .summarize-btn {
-  background: white;
+  background: var(--bg-card);
   border: 1.5px solid var(--primary);
   color: var(--primary);
   padding: 0.4rem 1rem;
@@ -460,7 +462,7 @@ header {
 
 .summarize-btn:hover {
   background: var(--primary);
-  color: white;
+  color: #0f1115;
 }
 
 .narrative-text-small {
@@ -547,7 +549,7 @@ header {
 }
 
 .tag.secondary {
-  background: #f1f3f5;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-dim);
   padding: 6px 12px;
   border-radius: 8px;
@@ -627,7 +629,7 @@ header {
   height: 50px;
   border-radius: 25px;
   background: var(--accent);
-  color: white;
+  color: #0f1115;
   display: flex;
   align-items: center;
   justify-content: center;

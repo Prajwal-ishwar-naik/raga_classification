@@ -29,10 +29,21 @@ def extract_swaras(f0, voiced, tonic_hz, sr=22050, hop_length=512):
     most_freq_idx = counts.most_common(1)[0][0]
     most_freq_pct = (counts[most_freq_idx] / total) * 100
     
+    # Map raw sequence to names and collapse consecutive duplicates
+    raw_sequence = [SWARA_NAMES[i] for i in pc]
+    swara_sequence = []
+    if raw_sequence:
+        swara_sequence.append(raw_sequence[0])
+        for s in raw_sequence[1:]:
+            if s != swara_sequence[-1]:
+                swara_sequence.append(s)
+
     return {
         "detected": detected,
         "unique": unique_swaras,
-        "most_frequent": (SWARA_NAMES[most_freq_idx], most_freq_pct)
+        "most_frequent": (SWARA_NAMES[most_freq_idx], most_freq_pct),
+        "distribution": {SWARA_NAMES[k]: v/total for k, v in counts.items()},
+        "sequence": swara_sequence
     }
 
 def extract_arohana_avarohana(f0, voiced, tonic_hz):
@@ -74,8 +85,8 @@ def extract_arohana_avarohana(f0, voiced, tonic_hz):
     best_ava = max(avarohana_seqs, key=len) if avarohana_seqs else sorted(list(set(seq)), reverse=True)
     
     return {
-        "arohana": " → ".join([SWARA_NAMES[i] for i in best_aro]),
-        "avarohana": " → ".join([SWARA_NAMES[i] for i in best_ava])
+        "arohana": " -> ".join([SWARA_NAMES[i] for i in best_aro]),
+        "avarohana": " -> ".join([SWARA_NAMES[i] for i in best_ava])
     }
 
 def detect_pakad(f0, voiced, tonic_hz):
@@ -145,8 +156,12 @@ def get_note_transitions(f0, voiced, tonic_hz):
     if not counts: return {"most_common": "Unknown", "pct": 0}
     most_common = counts.most_common(1)[0]
     pct = (most_common[1] / len(transitions)) * 100
-    t_str = f"{SWARA_NAMES[most_common[0][0]]} → {SWARA_NAMES[most_common[0][1]]}"
-    return {"most_common": t_str, "pct": round(pct)}
+    t_str = f"{SWARA_NAMES[most_common[0][0]]} -> {SWARA_NAMES[most_common[0][1]]}"
+    return {
+        "most_common": t_str, 
+        "pct": round(pct),
+        "all_transitions": {f"{SWARA_NAMES[k[0]]}-{SWARA_NAMES[k[1]]}": v for k, v in counts.items()}
+    }
 
 def get_tempo(y, sr):
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
@@ -172,10 +187,9 @@ def get_timbre(y, sr):
         "zcr": round(float(np.mean(zcr)), 4)
     }
 
-def extract_all_features(y, sr=22050):
+def extract_all_features(y, sr=22050, tonic_hz=None):
     # Ultra-Fast Pitch Tracking with Yin
     f0 = librosa.yin(y, sr=sr, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'), hop_length=1024)
-    voiced_flag = np.ones_like(f0).astype(bool) # Yin doesn't return voiced flag directly in this version, or we can use energy threshold
     # Estimate voicing based on energy
     rms = librosa.feature.rms(y=y, hop_length=1024)[0]
     voiced_flag = rms > (np.mean(rms) * 0.5)
@@ -184,7 +198,8 @@ def extract_all_features(y, sr=22050):
     if len(f0) > len(voiced_flag): f0 = f0[:len(voiced_flag)]
     
     valid_f0 = f0[voiced_flag & ~np.isnan(f0)]
-    tonic_hz = float(np.median(valid_f0)) if len(valid_f0) > 0 else 220.0
+    if tonic_hz is None:
+        tonic_hz = float(np.median(valid_f0)) if len(valid_f0) > 0 else 220.0
     
     swaras = extract_swaras(f0, voiced_flag, tonic_hz, sr)
     aro_ava = extract_arohana_avarohana(f0, voiced_flag, tonic_hz)
@@ -208,7 +223,7 @@ Detected: {', '.join(swaras['detected'][:5])} ...
 Unique: {', '.join(swaras['unique'])}
 Most Frequent: {swaras['most_frequent'][0]} ({swaras['most_frequent'][1]:.0f}%)
 
-📈 Arohana–Avarohana:
+📈 Arohana-Avarohana:
 Arohana: {aro_ava['arohana']}
 Avarohana: {aro_ava['avarohana']}
 
@@ -216,12 +231,12 @@ Avarohana: {aro_ava['avarohana']}
 1. {p1}
 {p2}
 
-🎶 Gamakas:
+🎼 Gamakas:
 Oscillations: {gamakas['oscillations']}
 Slides detected: {gamakas['slides']}
 Avg Pitch Variation: {gamakas['avg_var']} Hz
 
-⭐ Vadi–Samvadi:
+⭐ Vadi-Samvadi:
 Vadi: {vadi_samvadi['vadi']}
 Samvadi: {vadi_samvadi['samvadi']}
 
@@ -229,13 +244,13 @@ Samvadi: {vadi_samvadi['samvadi']}
 Min: {pitch_dist['min']} Hz, Max: {pitch_dist['max']} Hz
 Range: {pitch_dist['range']} Hz
 
-🔁 Note Transitions:
+🔄 Note Transitions:
 Most Common: {transitions['most_common']} ({transitions['pct']}%)
 
 🥁 Tempo:
 BPM: {tempo}
 
-🎼 Structure:
+🏗️ Structure:
 {structure}
 
 🎧 Timbre:
@@ -250,15 +265,57 @@ ZCR: {timbre['zcr']}
         "pitch_contour": valid_f0.tolist(),
         "_f0": f0,
         "_voiced": voiced_flag,
+        "detailed_features": {
+            "swaras": {
+                "detected": ', '.join(swaras['detected'][:5]) + " ...",
+                "unique": ', '.join(swaras['unique']),
+                "most_frequent": f"{swaras['most_frequent'][0]} ({swaras['most_frequent'][1]:.0f}%)"
+            },
+            "arohana_avarohana": {
+                "arohana": aro_ava['arohana'],
+                "avarohana": aro_ava['avarohana']
+            },
+            "pakad": [p1, p2.replace("2. ", "") if p2 else ""],
+            "gamakas": {
+                "oscillations": gamakas['oscillations'],
+                "slides": gamakas['slides'],
+                "avg_var": f"{gamakas['avg_var']} Hz"
+            },
+            "vadi_samvadi": {
+                "vadi": vadi_samvadi['vadi'],
+                "samvadi": vadi_samvadi['samvadi']
+            },
+            "pitch_range": {
+                "min": f"{pitch_dist['min']} Hz",
+                "max": f"{pitch_dist['max']} Hz",
+                "range": f"{pitch_dist['range']} Hz"
+            },
+            "transitions": {
+                "most_common": f"{transitions['most_common']} ({transitions['pct']}%)"
+            },
+            "tempo": {
+                "bpm": tempo
+            },
+            "structure": structure,
+            "timbre": {
+                "mfcc_mean": str(timbre['mfcc_mean']) + "...",
+                "centroid": timbre['centroid'],
+                "zcr": timbre['zcr']
+            }
+        },
         "metadata": {
+            "tonic_hz": tonic_hz,
             "swaras": swaras['detected'],
             "unique_swaras": swaras['unique'],
+            "swara_distribution": swaras['distribution'],
+            "swara_sequence": swaras['sequence'],
             "most_frequent": swaras['most_frequent'][0],
+            "dominant_notes": [swaras['most_frequent'][0]],
             "vadi": vadi_samvadi['vadi'],
             "samvadi": vadi_samvadi['samvadi'],
             "tempo": tempo,
             "gamakas": gamakas,
-            "pitch_range": pitch_dist['range'],
-            "transitions": transitions
+            "pitch_range": [pitch_dist['min'], pitch_dist['max']],
+            "transitions": transitions['all_transitions']
         }
     }

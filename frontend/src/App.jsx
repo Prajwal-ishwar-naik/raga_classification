@@ -19,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+const API_BASE = "http://127.0.0.1:8000";
 const SpectrogramView = ({ data }) => {
   const canvasRef = useRef(null);
 
@@ -126,7 +126,7 @@ const BulkResultsView = ({ data, files }) => {
                   <button 
                     className={`summarize-btn ${expandedIndex === i && viewMode === 'therapy' ? 'active' : ''}`}
                     onClick={() => { setExpandedIndex(expandedIndex === i && viewMode === 'therapy' ? null : i); setViewMode('therapy'); }}
-                    style={{ background: expandedIndex === i && viewMode === 'therapy' ? 'var(--accent)' : 'rgba(176, 141, 72, 0.1)', color: expandedIndex === i && viewMode === 'therapy' ? 'white' : 'var(--accent)' }}
+                    style={{ background: expandedIndex === i && viewMode === 'therapy' ? 'var(--accent)' : 'rgba(245, 158, 11, 0.1)', color: expandedIndex === i && viewMode === 'therapy' ? '#0f1115' : 'var(--primary)' }}
                   >
                     Therapy Analysis
                   </button>
@@ -142,9 +142,16 @@ const BulkResultsView = ({ data, files }) => {
                   >
                     <div className="expansion-inner">
                       {viewMode === 'narrative' ? (
-                        <div className="hybrid-explanation">
-                          <div className="label"><Sparkles size={14} style={{display:'inline', marginRight:'4px'}}/> AI Reasoned Analysis</div>
-                          <p className="narrative-text-small">{item.narrative}</p>
+                        <div className="hybrid-explanation" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div>
+                            <div className="label"><Sparkles size={14} style={{display:'inline', marginRight:'4px'}}/> AI Reasoned Analysis</div>
+                            <p className="narrative-text-small">{item.narrative}</p>
+                          </div>
+                          {item.detailed_features && (
+                            <div style={{ transform: 'scale(0.95)', transformOrigin: 'top left', marginTop: '-1rem' }}>
+                              <DetailedFeatureAnalysis features={item.detailed_features} />
+                            </div>
+                          )}
                         </div>
                       ) : viewMode === 'spectrogram' ? (
                         <div className="visual-block" style={{ padding: '1rem' }}>
@@ -157,6 +164,12 @@ const BulkResultsView = ({ data, files }) => {
                               <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
                                 <img src={item.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block', margin: '0 auto' }} />
                               </div>
+                            </div>
+                          )}
+                          
+                          {item.detailed_features && (
+                            <div style={{ transform: 'scale(0.95)', transformOrigin: 'top left', marginTop: '1rem' }}>
+                              <DetailedFeatureAnalysis features={item.detailed_features} />
                             </div>
                           )}
                         </div>
@@ -204,6 +217,122 @@ const BulkResultsView = ({ data, files }) => {
   );
 };
 
+const DetailedFeatureAnalysis = ({ features }) => {
+  if (!features) return null;
+  return (
+    <div className="detailed-analysis-section card" style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+      <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '1px solid rgba(176, 141, 72, 0.2)', paddingBottom: '1rem' }}>
+        <h3 style={{ color: 'var(--accent)', letterSpacing: '0.15em', fontWeight: 800, fontSize: '1.2rem' }}>FEATURE ANALYSIS</h3>
+      </div>
+      
+      <div className="feature-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+        
+        {/* Swaras */}
+        <div className="feature-item">
+          <h4 style={{ color: 'var(--primary)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🎵 Swaras</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Detected:</span> {features.swaras.detected}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Unique:</span> {features.swaras.unique}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Most Frequent:</span> {features.swaras.most_frequent}</div>
+          </div>
+        </div>
+
+        {/* Arohana-Avarohana */}
+        <div className="feature-item">
+          <h4 style={{ color: '#4db8ff', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>📈 Arohana-Avarohana</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Arohana:</span> {features.arohana_avarohana.arohana}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Avarohana:</span> {features.arohana_avarohana.avarohana}</div>
+          </div>
+        </div>
+
+        {/* Pakad */}
+        <div className="feature-item">
+          <h4 style={{ color: '#ff4757', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🎯 Pakad</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            {features.pakad.map((p, idx) => p ? <div key={idx}><span style={{ fontWeight: 700, color: 'var(--accent)' }}>{idx + 1}.</span> {p}</div> : null)}
+          </div>
+        </div>
+
+        {/* Gamakas */}
+        <div className="feature-item">
+          <h4 style={{ color: '#7158e2', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🎶 Gamakas</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Oscillations:</span> {features.gamakas.oscillations}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Slides detected:</span> {features.gamakas.slides}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Avg Pitch Variation:</span> {features.gamakas.avg_var}</div>
+          </div>
+        </div>
+
+        {/* Vadi-Samvadi */}
+        <div className="feature-item">
+          <h4 style={{ color: '#fbc531', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>⭐ Vadi-Samvadi</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Vadi:</span> {features.vadi_samvadi.vadi}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Samvadi:</span> {features.vadi_samvadi.samvadi}</div>
+          </div>
+        </div>
+
+        {/* Pitch Range */}
+        <div className="feature-item">
+          <h4 style={{ color: '#00cec9', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>📊 Pitch Range</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Min:</span> {features.pitch_range.min}, <span style={{ fontWeight: 700, color: 'var(--accent)' }}>Max:</span> {features.pitch_range.max}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Range:</span> {features.pitch_range.range}</div>
+          </div>
+        </div>
+
+        {/* Note Transitions */}
+        <div className="feature-item">
+          <h4 style={{ color: '#e84393', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🔄 Note Transitions</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Most Common:</span> {features.transitions.most_common}</div>
+          </div>
+        </div>
+
+        {/* Tempo & Structure */}
+        <div className="feature-item">
+          <h4 style={{ color: '#d63031', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>⏱️ Timing & Structure</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>BPM:</span> {features.tempo.bpm}</div>
+            <div style={{ whiteSpace: 'pre-wrap', marginTop: '0.5rem' }}><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Structure:</span><br/>{features.structure}</div>
+          </div>
+        </div>
+
+        {/* Timbre */}
+        <div className="feature-item">
+          <h4 style={{ color: '#636e72', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🎧 Timbre</h4>
+          <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>MFCC Mean:</span> {features.timbre.mfcc_mean}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Spectral Centroid:</span> {features.timbre.centroid}</div>
+            <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>ZCR:</span> {features.timbre.zcr}</div>
+          </div>
+        </div>
+
+        {/* Advanced Analytics */}
+        {features.advanced_analytics && (
+          <div className="feature-item">
+            <h4 style={{ color: '#00b894', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>🧠 AI Confidence Reasoning</h4>
+            <div style={{ color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.8' }}>
+              <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Sa Stability:</span> {(features.advanced_analytics.sa_stability || 0).toFixed(2)}</div>
+              <div><span style={{ fontWeight: 700, color: 'var(--accent)' }}>Nyas Swaras:</span> {(features.advanced_analytics.nyas_swaras || []).join(', ') || 'None'}</div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <span style={{ fontWeight: 700, color: 'var(--accent)' }}>Confidence Explanation:</span>
+                <ul style={{ paddingLeft: '1.2rem', marginTop: '0.2rem', marginBottom: 0 }}>
+                  {(features.advanced_analytics.confidence_reason || []).map((reason, idx) => (
+                    <li key={idx}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -243,7 +372,7 @@ const App = () => {
     if (files.length === 1) {
       formData.append('file', files[0]);
       try {
-        const response = await axios.post('/api/classify', formData);
+        const response = await axios.post(`${API_BASE}/classify`, formData);
         setResult(response.data);
       } catch (err) {
         setError('Inference Error: ' + (err.response?.data?.detail || 'Server Down'));
@@ -251,7 +380,7 @@ const App = () => {
     } else {
       Array.from(files).forEach(f => formData.append('files', f));
       try {
-        const response = await axios.post('/api/classify_bulk', formData);
+        const response = await axios.post(`${API_BASE}/classify_bulk`, formData);
         setBulkResults(response.data.results);
       } catch (err) {
         const detail = err.response?.data?.detail || err.message;
@@ -405,17 +534,14 @@ const App = () => {
                     <h2 className="prediction-display">{result.neural_prediction}</h2>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
-                    <div className="confidence-ring">
-                      <span className="conf-value">{(result.neural_confidence * 100).toFixed(0)}%</span>
-                      <span className="conf-label">Confidence</span>
-                    </div>
+
                     <button 
                       onClick={() => setShowTherapy(!showTherapy)}
                       className="therapy-toggle-btn"
                       style={{
                         padding: '0.6rem 1.2rem',
                         background: showTherapy ? 'var(--accent)' : 'var(--primary)',
-                        color: showTherapy ? 'white' : 'black',
+                        color: '#0f1115',
                         border: 'none',
                         borderRadius: '10px',
                         fontWeight: '800',
@@ -428,28 +554,13 @@ const App = () => {
                         boxShadow: '0 4px 12px rgba(176, 141, 72, 0.2)'
                       }}
                     >
-                      <Heart size={16} fill={showTherapy ? 'white' : 'transparent'} />
+                      <Heart size={16} fill={showTherapy ? '#0f1115' : 'transparent'} />
                       {showTherapy ? 'Hide Therapy Analysis' : 'View Therapy Analysis'}
                     </button>
                   </div>
                 </div>
 
-                {/* --- LEGACY COMPREHENSIVE DASHBOARD (PROMINENT) --- */}
-                {result.image_url && (
-                  <div className="analysis-visualization card" style={{ marginTop: '0rem', marginBottom: '2rem' }}>
-                    <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Layers size={16} /> Visual Analysis Dashboard
-                      </div>
-                      <a href={result.image_url} download={`raga_analysis_${result.detected_raag}.png`} className="download-btn" style={{ padding: '0.4rem 0.8rem', background: 'var(--primary)', color: '#000', borderRadius: '4px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                        Download PNG
-                      </a>
-                    </div>
-                    <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
-                      <img src={result.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block' }} />
-                    </div>
-                  </div>
-                )}
+                {/* Removed from here to place below spectrogram */}
 
                 <div className="neural-visuals">
                   <div className="visual-block">
@@ -503,6 +614,23 @@ const App = () => {
                   </div>
                 </div>
 
+                {/* --- LEGACY COMPREHENSIVE DASHBOARD (PROMINENT) MOVED HERE --- */}
+                {result.image_url && (
+                  <div className="analysis-visualization card" style={{ marginTop: '1.5rem', marginBottom: '0rem' }}>
+                    <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Layers size={16} /> Visual Analysis Dashboard
+                      </div>
+                      <a href={result.image_url} download={`raga_analysis_${result.detected_raag}.png`} className="download-btn" style={{ padding: '0.4rem 0.8rem', background: 'var(--primary)', color: '#000', borderRadius: '4px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        Download PNG
+                      </a>
+                    </div>
+                    <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
+                      <img src={result.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block' }} />
+                    </div>
+                  </div>
+                )}
+
 
                 <div className="narrative-section card" style={{ marginTop: '1.5rem' }}>
                   <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -512,46 +640,7 @@ const App = () => {
                 </div>
 
 
-                {/* --- NEW: MUSICAL FEATURE SUMMARY --- */}
-                <div className="feature-summary-grid" style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                  <div className="feature-card card">
-                    <span className="label">Dominant Swara</span>
-                    <div className="val">{result.metadata.advanced_features.most_frequent || 'N/A'}</div>
-                  </div>
-                  <div className="feature-card card">
-                    <span className="label">Total Swaras</span>
-                    <div className="val">{result.metadata.swaras.length}</div>
-                  </div>
-                  <div className="feature-card card">
-                    <span className="label">Tempo (BPM)</span>
-                    <div className="val">{result.metadata.advanced_features.tempo || 'N/A'}</div>
-                  </div>
-                  <div className="feature-card card">
-                    <span className="label">Pitch Range</span>
-                    <div className="val">{Math.round(result.metadata.advanced_features.pitch_range || 0)} Hz</div>
-                  </div>
-                  <div className="feature-card card">
-                    <span className="label">Gamakas</span>
-                    <div className="val">{result.metadata.advanced_features.gamakas?.slides === 'Yes' ? 'Vibrant' : 'Steady'}</div>
-                  </div>
-                </div>
-
-                {/* Note Transitions */}
-                {result.metadata.advanced_features.transitions && (
-                  <div className="transitions-card card" style={{ marginTop: '1rem' }}>
-                    <span className="label" style={{ marginBottom: '0.8rem', display: 'block' }}>Key Melodic Transitions</span>
-                    <div className="transition-display" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                      <div className="main-transition">
-                        <span className="t-label">Most Common</span>
-                        <div className="t-val">{result.metadata.advanced_features.transitions.most_common}</div>
-                      </div>
-                      <div className="t-pct">
-                        <div className="pct-circle">{result.metadata.advanced_features.transitions.pct}%</div>
-                        <span className="t-label">Frequency</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <DetailedFeatureAnalysis features={result.detailed_features} />
 
                 {/* --- NEW: DETAILED VISUALIZATIONS --- */}
                 <div className="detailed-visuals-grid" style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>

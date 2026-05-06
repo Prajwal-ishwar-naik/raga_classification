@@ -1,0 +1,58 @@
+{
+  "Bhairav": {
+    "vector": [1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1],
+    "pakads": ["Ga-Ma-dha", "dha-Pa-Ma-Ga-re-Sa"],
+    "transitions": {"Sa-re": 5, "re-Ga": 5, "dha-Sa": 5},
+    "vadi": "dha",
+    "time": "Day"
+  },
+  "Bhairavi": {
+    "vector": [1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0],
+    "pakads": ["Sa-ni-dha-Pa", "ga-re-Sa"],
+    "transitions": {"re-Sa": 5, "ga-Ma": 5, "Pa-dha": 5},
+    "vadi": "Ma",
+    "time": "Day"
+  },
+  "Yaman": {
+    "vector": [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1],
+    "pakads": ["Ni-Re-Ga", "Ga-Ma'-Pa", "Pa-Ma'-Ga-Re-Sa"],
+    "transitions": {"Ni-Re": 5, "Re-Ga": 5, "Ga-Ma'": 5},
+    "vadi": "Ga",
+    "time": "Night"
+  },
+  "Kedar": {
+    "vector": [1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0],
+    "pakads": ["Ma-Pa-Ma'-Ma", "Sa-Ma", "Pa-Dha-Pa-Ma"],
+    "transitions": {"Ma'-Pa": 5, "Pa-Ma'": 5, "Ga-Ma'": 5},
+    "vadi": "Ma",
+    "time": "Night"
+  },
+  "Malkauns": {
+    "vector": [1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0],
+    "pakads": ["Sa-ga-Ma-ga-Sa", "dha-ni-dha-Ma"],
+    "transitions": {"Sa-ga": 5, "ga-Ma": 5, "dha-ni": 5},
+    "vadi": "Ma",
+    "time": "Night"
+  },
+  "Bageshri": {
+    "vector": [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0],
+    "pakads": ["ni-Dha-Ma-ga", "Ma-ga-Re-Sa"],
+    "transitions": {"Ma-Ga": 5, "Ga-Re": 5, "Ni-Sa": 5},
+    "vadi": "ga",
+    "time": "Night"
+  },
+  "Todi": {
+    "vector": [1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+    "pakads": ["dha-Pa-Ma'-Ma", "ga-re-Sa", "Ma'-dha-ni-Sa"],
+    "transitions": {"re-ga": 5, "Ma'-dha": 5, "dha-Pa": 5},
+    "vadi": "dha",
+    "time": "Day"
+  },
+  "Jaunpuri": {
+    "vector": [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0],
+    "pakads": ["Pa-dha-ni-Pa", "Ma-ga-Re-Sa"],
+    "transitions": {"Pa-dha": 5, "dha-ni": 5, "ni-Pa": 5},
+    "vadi": "dha",
+    "time": "Day"
+  }
+}

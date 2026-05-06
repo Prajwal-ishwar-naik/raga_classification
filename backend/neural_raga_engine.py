@@ -14,8 +14,10 @@ from advanced_features import extract_all_features
 from therapy_engine import get_therapy_output
 from visualizer import plot_pitch_contour, plot_spectrogram, plot_full_dashboard
 
+import sys
 # Resolve project root (one level above backend/)
 BASE_DIR = Path(__file__).parent.parent
+sys.path.append(str(BASE_DIR))
 
 class HybridRagaVision:
     def __init__(self, model_id="laion/clap-htsat-fused"):
@@ -43,212 +45,163 @@ class HybridRagaVision:
 
     def analyze(self, filepath, duration=30, original_filename="", file_id=None):
         """
-        Hyper-Spectral Semantic-Acoustic Fusion Pipeline
+        Hyper-Spectral Semantic-Acoustic Fusion Pipeline (Modular Refactor)
         """
-        print(f"[HYBRID] Processing: {Path(filepath).name} (Context: {original_filename}, Dur: {duration}s)")
+        from utils.chunking import get_chunks
+        from utils.aggregation import aggregate_features
+        from core.classifier import classify_raga
         
-        # --- PHASE 0: COGNITIVE METADATA ANCHOR ---
-        semantic_raga_hint = None
-        for r_key in RAGA_DB_V3.keys():
-            if r_key.lower().replace(" ", "") in original_filename.lower().replace(" ", ""):
-                semantic_raga_hint = r_key
-                break
+        # --- PHASE 0: ROBUST TONIC LOCKING ---
+        # Load a small sample for tonic estimation
+        y_tonic, sr_tonic = librosa.load(filepath, sr=22050, duration=10)
+        f0_t, voiced_t, _ = librosa.pyin(y_tonic, sr=sr_tonic, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'))
         
-        # --- PHASE 1: ULTRA-FAST NEURAL VISION ---
-        # Load only 30s for ultra-fast analysis
-        analysis_dur = min(30, duration if duration else 30)
-        y_22k, sr_22k = librosa.load(filepath, sr=22050, duration=analysis_dur)
-        
-        # Fast resample for CLAP
-        full_audio_48k = librosa.resample(y_22k, orig_sr=sr_22k, target_sr=48000)
-        total_len = len(full_audio_48k)
-        sample_len = int(5 * 48000)
-        
-        # Use single middle segment for ultra speed
-        mid_idx = max(0, (total_len // 2) - (sample_len // 2))
-        sample_indices = [mid_idx]
-        
-        neural_moods = []
-        confidences = []
-        
-        for idx in sample_indices:
-            try:
-                segment = full_audio_48k[idx : idx + sample_len]
-                inputs = self.processor(audio=segment, return_tensors="pt", sampling_rate=48000).to(self.device)
-                with torch.no_grad():
-                    outputs = self.model.get_audio_features(**inputs)
-                    audio_embeds = outputs.audio_embeds if hasattr(outputs, 'audio_embeds') else (outputs.pooler_output if hasattr(outputs, 'pooler_output') else outputs[0])
-                    audio_embeds = audio_embeds / audio_embeds.norm(p=2, dim=-1, keepdim=True)
-                    
-                    similarity = (audio_embeds @ self.text_embeds.T).squeeze(0)
-                    probs = torch.nn.functional.softmax(similarity * 10, dim=-1).cpu().numpy()
-                    
-                neural_moods.append("Day" if (probs[0] + probs[1]) > (probs[2] + probs[3]) else "Night")
-                confidences.append(float(max(probs[0]+probs[1], probs[2]+probs[3])))
-            except Exception as e:
-                print(f"[REASONING BUG] Segment skip: {e}")
-                continue
+        initial_tonic = estimate_tonic_advanced(f0_t, voiced_t)
+        locked_tonic = refine_tonic_symbolic(f0_t, voiced_t, initial_tonic)
+        print(f"[HYBRID] Tonic Locked: {locked_tonic:.2f} Hz")
 
-        # Consensus Mood
-        neural_mood = neural_moods[0] if neural_moods else "Unknown"
-        confidence = confidences[0] if confidences else 0.5
+        # --- PHASE 1: AUDIO CHUNKING ---
+        chunks = get_chunks(filepath, sr=22050, chunk_size=20, step_size=10)
+        if not chunks:
+            print("[ERROR] No audio chunks created.")
+            raise ValueError("Audio file too short or invalid")
 
-        # --- PHASE 2: ULTRA-FAST CHROMA RAGA MATCHER ---
-        print(f"  [LOGIC] Computing Acoustic Profile (Ultra-Fast STFT)...")
+        # --- PHASE 2: FEATURE EXTRACTION (PER CHUNK) ---
+        chunk_features = []
+        full_swara_sequence = []
+        first_chunk_text = ""
         
-        y_music = y_22k
-        
-        # chroma_stft is 10x faster than chroma_cqt
-        chroma = librosa.feature.chroma_stft(y=y_music, sr=sr_22k, hop_length=2048)
-        chroma_mean = np.mean(chroma, axis=1)
-        chroma_norm = chroma_mean / (np.linalg.norm(chroma_mean) + 1e-6)
-        
-        best_score = -1
-        best_raag = "Unknown"
-        best_time = "Unknown"
-        logic_report = []
-        detected_swaras = []
-        best_shifted_chroma = np.zeros(12)
-        all_raga_scores = []
-        
-        for r_name, info in RAGA_DB_V3.items():
-            template = np.zeros(12)
-            for n in info.get("notes", []): template[n] = 1.0
-            v = info.get("vadi", -1); sv = info.get("samvadi", -1)
-            if v != -1: template[v] = 2.0
-            if sv != -1: template[sv] = 1.5
+        for i, chunk in enumerate(chunks):
+            if i * 10 > (duration if duration else 120): break
             
-            template_norm = template / (np.linalg.norm(template) + 1e-6)
-            forbidden = info.get("forbidden", [])
-            
-            best_score_for_this_raga = -1
-            
-            for shift in range(12):
-                shifted_chroma = np.roll(chroma_norm, -shift)
-                score = np.dot(shifted_chroma, template_norm)
-                
-                for fn in forbidden:
-                    if shifted_chroma[fn] > 0.15:
-                        score -= shifted_chroma[fn] * 3.0
-                
-                if semantic_raga_hint == r_name:
-                    score += 20.0
+            features = extract_all_features(chunk, sr=22050, tonic_hz=locked_tonic)
+            chunk_features.append(features["metadata"])
+            full_swara_sequence.extend(features["metadata"].get("swara_sequence", []))
+            if i == 0:
+                first_chunk_text = features.get("text", "")
+                detailed_features = features.get("detailed_features", {})
 
-                if score > best_score_for_this_raga:
-                    best_score_for_this_raga = score
+        # --- PHASE 3: AGGREGATION ---
+        aggregated = aggregate_features(chunk_features)
+        # Add the global sequence for pakad detection
+        aggregated["swara_sequence"] = full_swara_sequence
 
-                if score > best_score:
-                    best_score = score
-                    best_raag = r_name
-                    best_time = info.get("time", "Unknown")
-                    best_shifted_chroma = shifted_chroma
-                    active_notes = [SWARA_NAMES[i] for i, val in enumerate(shifted_chroma) if val > 0.15]
-                    detected_swaras = active_notes
-                    
-            all_raga_scores.append((r_name, best_score_for_this_raga))
-
-        # Ranked list for visualization
-        ranked_results = sorted(all_raga_scores, key=lambda x: x[1], reverse=True)
-
-        # --- PHASE 3: HYBRID VERDICT ---
-        is_morning = any(x in best_time for x in ["AM", "morning", "Morn", "Dawn", "Day"])
-        logic_category = "Day Raag" if is_morning else "Night Raag"
+        # --- PHASE 4: HYBRID CLASSIFICATION ---
+        res = classify_raga(aggregated)
         
-        final_category = f"Verified {best_raag} ({logic_category})"
+        # === NEW FEATURES (SA STABILITY, NYAS, CONFIDENCE) ===
+        from collections import Counter
         
-        if semantic_raga_hint == best_raag:
-            logic_report = [f"Semantic-Acoustic Fusion absolutely confirmed this piece as {best_raag}.",
-                            f"Musicological Identity Category: {logic_category}"]
-        else:
-            logic_report = [f"Mathematical Chroma Filter matched the performance to Raag {best_raag}.", 
-                            f"Musicological Time Category: {logic_category}"]
+        # 1. Sa Stability Score
+        global_seq = aggregated.get("swara_sequence", [])
+        sa_stability = round(global_seq.count("Sa") / max(len(global_seq), 1), 3) if global_seq else 0.0
+        
+        # 2. Nyas Swaras
+        phrase_endings = [chunk.get("swara_sequence", [])[-1] for chunk in chunk_features if chunk.get("swara_sequence")]
+        nyas_swaras = [note for note, count in Counter(phrase_endings).most_common(2)]
+        
+        # 3. Confidence Explanation
+        confidence_reason = []
+        if res["confidence"] > 0.7:
+            confidence_reason.append("Strong swara alignment")
+        elif res["confidence"] > 0.4:
+            confidence_reason.append("Moderate swara alignment")
             
-        # --- PHASE 4: OLLAMA COGNITIVE REASONING ---
-        narrative = self.cognitive_reasoning(best_raag, neural_mood, confidence, logic_report, detected_swaras)
-
-        # --- PHASE 5: ADVANCED FEATURE EXTRACTION ---
-        print("  [FEATURES] Extracting comprehensive musical features...")
-        advanced_features_data = {}
-        therapy_data = {}
+        if aggregated.get("pakads"):
+            confidence_reason.append("Strong pakad match")
+            
+        if aggregated.get("transitions"):
+            confidence_reason.append("Melodic transitions match grammar")
+            
+        detailed_features["advanced_analytics"] = {
+            "sa_stability": sa_stability,
+            "nyas_swaras": nyas_swaras,
+            "confidence_reason": confidence_reason
+        }
+        
+        # Inject into metadata
+        aggregated["sa_stability"] = sa_stability
+        aggregated["nyas_swaras"] = nyas_swaras
+        aggregated["confidence_reason"] = confidence_reason
+        # =====================================================
+        
+        # --- PHASE 5: NEURAL MOOD (CLAP) ---
+        # Use first 5s for mood context
+        mood_audio = chunks[0][:5*22050]
+        mood_audio_48k = librosa.resample(mood_audio, orig_sr=22050, target_sr=48000)
+        
+        neural_mood = "Unknown"
+        confidence = 0.5
         try:
-            advanced_features_data = extract_all_features(y_music, sr=sr_22k)
-            narrative = narrative + "\n\n" + advanced_features_data.get("text", "")
-            
-            # --- NEW: THERAPY RECOMMENDATION MODULE ---
-            therapy_output = get_therapy_output(advanced_features_data)
-            
-            # Placeholder for backward compatibility if needed, but the task says ONLY ADD 'therapy'
-            # therapy_data = therapy_output # I'll use therapy_output directly below
-            
+            inputs = self.processor(audio=mood_audio_48k, return_tensors="pt", sampling_rate=48000).to(self.device)
+            with torch.no_grad():
+                outputs = self.model.get_audio_features(**inputs)
+                audio_embeds = outputs.audio_embeds if hasattr(outputs, 'audio_embeds') else (outputs.pooler_output if hasattr(outputs, 'pooler_output') else outputs[0])
+                audio_embeds = audio_embeds / audio_embeds.norm(p=2, dim=-1, keepdim=True)
+                similarity = (audio_embeds @ self.text_embeds.T).squeeze(0)
+                probs = torch.nn.functional.softmax(similarity * 10, dim=-1).cpu().numpy()
+                neural_mood = "Day" if (probs[0] + probs[1]) > (probs[2] + probs[3]) else "Night"
+                confidence = float(max(probs[0]+probs[1], probs[2]+probs[3]))
         except Exception as e:
-            print(f"[ADVANCED FEATURES/THERAPY ERROR] {e}")
+            print(f"[NEURAL MOOD ERROR] {e}")
 
-        # --- PHASE 6: VISUALIZATION DASHBOARD ---
+        # --- PHASE 6: VISUALIZATION ---
         image_url = None
-        pitch_contour_url = None
         spectrogram_url = None
-        
         if original_filename:
             stem = Path(original_filename).stem
-            
-            # Legacy dashboard (now dynamically generated)
-            legacy_path = BASE_DIR / "output" / f"analysis_{stem}.png"
-            try:
-                plot_full_dashboard({
-                    "_f0": advanced_features_data.get("_f0"),
-                    "_voiced": advanced_features_data.get("_voiced"),
-                    "pc_hist": chroma_norm,
-                    "tonic_hz": advanced_features_data["metadata"].get("tonic_hz", 220),
-                    "_sr": sr_22k
-                }, ranked_results, str(legacy_path), stem)
-                image_url = f"/output/analysis_{stem}.png"
-            except Exception as e:
-                print(f"[LEGACY DASHBOARD ERROR] {e}")
-            
-            # New Detailed Visualizations
-            pitch_path = BASE_DIR / "static" / f"pitch_{stem}.png"
-            spec_path = BASE_DIR / "static" / f"spectrogram_{stem}.png"
+            spec_path = BASE_DIR / "static" / f"spec_{stem}.png"
+            dash_path = BASE_DIR / "static" / f"dash_{stem}.png"
+            output_image_path = BASE_DIR / "output" / f"analysis_{stem}.png"
             
             try:
-                plot_pitch_contour({
-                    "_f0": advanced_features_data.get("_f0"),
-                    "_voiced": advanced_features_data.get("_voiced"),
-                    "tonic_hz": advanced_features_data["metadata"].get("tonic_hz", 220),
-                    "_sr": sr_22k
-                }, str(pitch_path))
+                plot_spectrogram(chunks[0], 22050, str(spec_path))
+                spectrogram_url = f"/static/spec_{stem}.png"
                 
-                # Use preloaded audio instead of path
-                plot_spectrogram(y_music, sr_22k, str(spec_path))
+                # Check if a pre-generated analysis image exists in the output folder
+                if output_image_path.exists():
+                    image_url = f"/output/analysis_{stem}.png"
+                else:
+                    # Fallback: Generate Full Dashboard dynamically
+                    plot_full_dashboard(aggregated, res.get("ranked", []), str(dash_path), stem)
+                    image_url = f"/static/dash_{stem}.png"
                 
-                pitch_contour_url = f"/static/pitch_{stem}.png"
-                spectrogram_url = f"/static/spectrogram_{stem}.png"
             except Exception as e:
                 print(f"[VISUALIZATION ERROR] {e}")
 
-        # Spectrogram for UI
-        S = librosa.feature.melspectrogram(y=full_audio_48k[:48000*10], sr=48000, n_mels=128)
+        # Generate UI Spectrogram Data
+        S = librosa.feature.melspectrogram(y=chunks[0][:10*22050], sr=22050, n_mels=128)
         S_db = librosa.power_to_db(S, ref=np.max)
         spec_data = ((S_db - S_db.min()) / (S_db.max() - S_db.min()) * 255).astype(np.uint8).tolist()
-        
+
+        # Final narrative construction
+        narrative = res.get("note", "") + "\n\n" + "\n".join(res["analysis"]["dominant_features"])
+        if res["analysis"]["why_not_others"]:
+            narrative += "\n\nRejections:\n" + "\n".join(res["analysis"]["why_not_others"])
+
         return {
-            "prediction": final_category,
-            "neural_prediction": final_category,
+            "prediction": res["prediction"],
+            "neural_prediction": res["prediction"],
             "neural_mood": neural_mood,
-            "detected_raag": best_raag,
-            "confidence": confidence,
-            "logic_score": float(best_score),
+            "detected_raag": res["prediction"],
+            "confidence": res["confidence"],
+            "neural_confidence": res["confidence"], # Added for frontend compatibility
+            "logic_score": res["confidence"],
             "spectrogram": spec_data,
             "image_url": image_url,
             "narrative": narrative,
             "metadata": {
-                "time": best_time,
-                "swaras": detected_swaras,
-                "advanced_features": advanced_features_data.get("metadata", {})
+                "time": neural_mood,
+                "swaras": sorted(list(aggregated.get("swara_distribution", {}).keys())), # Convert to list for chips
+                "advanced_features": {
+                    **aggregated,
+                    "pitch_range": aggregated["pitch_range"][1] - aggregated["pitch_range"][0] # Convert to scalar for UI
+                }
             },
-            "report": logic_report,
-            "therapy": therapy_output,
-            "therapy_recommendation": therapy_output,
-            "pitch_contour_url": pitch_contour_url,
+            "report": res["analysis"]["dominant_features"],
+            "detailed_features": detailed_features,
+            "therapy": get_therapy_output(aggregated),
+            "therapy_recommendation": get_therapy_output(aggregated),
             "spectrogram_url": spectrogram_url
         }
 
