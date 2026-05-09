@@ -19,6 +19,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, AreaChart, Area
+} from 'recharts';
 const API_BASE = "http://127.0.0.1:8000";
 const SpectrogramView = ({ data }) => {
   const canvasRef = useRef(null);
@@ -61,21 +64,96 @@ const SpectrogramView = ({ data }) => {
   );
 };
 
-const BulkResultsView = ({ data, files }) => {
+const InteractivePitchChart = ({ data }) => {
+  if (!data || data.length === 0) return <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>No Pitch Data Extracted</div>;
+  
+  const step = Math.ceil(data.length / 400);
+  const plotData = data.filter((_, i) => i % step === 0).map((val, i) => ({
+    time: (i * step * 1024 / 22050).toFixed(1),
+    frequency: val > 0 ? parseFloat(val.toFixed(1)) : null
+  }));
+
+  return (
+    <div style={{ width: '100%', height: 250, marginTop: '1rem' }}>
+      <ResponsiveContainer>
+        <AreaChart data={plotData}>
+          <defs>
+            <linearGradient id="colorFreq" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <XAxis 
+            dataKey="time" 
+            tick={{ fill: '#666', fontSize: 10 }} 
+            axisLine={{ stroke: '#333' }}
+            label={{ value: 'Time (s)', position: 'insideBottomRight', offset: -5, fill: '#444', fontSize: 10 }}
+          />
+          <YAxis 
+            tick={{ fill: '#666', fontSize: 10 }} 
+            axisLine={{ stroke: '#333' }}
+            domain={['auto', 'auto']}
+            label={{ value: 'Hz', angle: -90, position: 'insideLeft', fill: '#444', fontSize: 10 }}
+          />
+          <Tooltip 
+            contentStyle={{ background: '#1e1f22', border: '1px solid #f59e0b', borderRadius: '8px', fontSize: '12px' }}
+            itemStyle={{ color: '#f59e0b' }}
+            formatter={(value) => [`${value} Hz`, 'Frequency']}
+          />
+          <Area type="monotone" dataKey="frequency" stroke="#f59e0b" fillOpacity={1} fill="url(#colorFreq)" dot={false} strokeWidth={2} connectNulls={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const InteractiveSwaraChart = ({ distribution }) => {
+  if (!distribution) return null;
+  const swaraOrder = ["Sa", "re", "Re", "ga", "Ga", "Ma", "Ma'", "Pa", "dha", "Dha", "ni", "Ni"];
+  const plotData = swaraOrder.map(s => ({
+    name: s,
+    value: parseFloat(((distribution[s] || 0) * 100).toFixed(2))
+  }));
+
+  return (
+    <div style={{ width: '100%', height: 250, marginTop: '1rem' }}>
+      <ResponsiveContainer>
+        <BarChart data={plotData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <XAxis dataKey="name" tick={{ fill: '#aaa', fontWeight: 700, fontSize: 11 }} axisLine={{ stroke: '#333' }} />
+          <YAxis tick={{ fill: '#666', fontSize: 10 }} axisLine={{ stroke: '#333' }} />
+          <Tooltip 
+            formatter={(value) => [`${value}%`, 'Energy Prominence']}
+            contentStyle={{ background: '#1e1f22', border: '1px solid #4db8ff', borderRadius: '8px', fontSize: '12px' }}
+          />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {plotData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.value > 5 ? '#f59e0b' : '#2b2d31'} stroke={entry.value > 5 ? '#f59e0b' : '#4db8ff'} strokeWidth={1} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const BulkResultsView = ({ data, files, handleDownloadPDF, pdfLoading }) => {
   const dayCount = data.filter(r => r.prediction.includes('Day')).length;
   const nightCount = data.filter(r => r.prediction.includes('Night')).length;
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [viewMode, setViewMode] = useState('narrative'); // 'narrative', 'spectrogram', or 'therapy'
+  const [vizMode, setVizMode] = useState('interactive'); // 'interactive' or 'png'
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bulk-view">
       <div className="bulk-stats">
         <div className="stat-card card">
-          <span className="label">Day Raags</span>
+          <span className="label">Day Audio</span>
           <div className="stat-val">{dayCount}</div>
         </div>
         <div className="stat-card card">
-          <span className="label">Night Raags</span>
+          <span className="label">Night Audio</span>
           <div className="stat-val">{nightCount}</div>
         </div>
       </div>
@@ -109,6 +187,14 @@ const BulkResultsView = ({ data, files }) => {
                   {item.prediction}
                 </span>
                 <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="summarize-btn"
+                    onClick={() => handleDownloadPDF(item, i)}
+                    disabled={pdfLoading === i}
+                    style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+                  >
+                    {pdfLoading === i ? '...' : 'PDF Report'}
+                  </button>
                   <button 
                     className={`summarize-btn ${expandedIndex === i && viewMode === 'narrative' ? 'active' : ''}`}
                     onClick={() => { setExpandedIndex(expandedIndex === i && viewMode === 'narrative' ? null : i); setViewMode('narrative'); }}
@@ -155,7 +241,35 @@ const BulkResultsView = ({ data, files }) => {
                         </div>
                       ) : viewMode === 'spectrogram' ? (
                         <div className="visual-block" style={{ padding: '1rem' }}>
-                          <span className="label" style={{marginBottom: '0.5rem', display: 'block'}}>Acoustic Spectrogram Signature</span>
+                          <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
+                            <button 
+                              onClick={() => setVizMode('interactive')}
+                              style={{ padding: '4px 12px', fontSize: '0.7rem', borderRadius: '4px', background: vizMode === 'interactive' ? 'var(--primary)' : '#222', color: vizMode === 'interactive' ? '#000' : '#888', border: '1px solid #444', cursor: 'pointer' }}
+                            >INTERACTIVE</button>
+                            <button 
+                              onClick={() => setVizMode('png')}
+                              style={{ padding: '4px 12px', fontSize: '0.7rem', borderRadius: '4px', background: vizMode === 'png' ? 'var(--primary)' : '#222', color: vizMode === 'png' ? '#000' : '#888', border: '1px solid #444', cursor: 'pointer' }}
+                            >PNG MODE</button>
+                          </div>
+
+                          {vizMode === 'interactive' ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
+                              <div>
+                                <span style={{ fontSize: '0.6rem', color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Pitch Contour (Hz)</span>
+                                <InteractivePitchChart data={item.pitch_contour_data} />
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.6rem', color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Swara Distribution (%)</span>
+                                <InteractiveSwaraChart distribution={item.swara_distribution_data} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ background: '#111', padding: '1rem', borderRadius: '8px' }}>
+                               <img src={item.image_url} alt="Analysis PNG" style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
+                            </div>
+                          )}
+
+                          <span className="label" style={{marginTop: '1.5rem', marginBottom: '0.5rem', display: 'block'}}>Acoustic Spectrogram Signature</span>
                           {item.spectrogram ? <SpectrogramView data={item.spectrogram} /> : <p className="narrative-text-small">Spectrogram data unavailable for this segment.</p>}
                           
                           {item.image_url && (
@@ -163,6 +277,7 @@ const BulkResultsView = ({ data, files }) => {
                               <span className="label" style={{marginBottom: '0.5rem', display: 'block'}}>Visual Analysis Dashboard</span>
                               <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
                                 <img src={item.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block', margin: '0 auto' }} />
+                                <a href={item.image_url} download={`analysis_${item.filename}.png`} style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none' }}>Download Static PNG</a>
                               </div>
                             </div>
                           )}
@@ -341,6 +456,26 @@ const App = () => {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(null);
   const [showTherapy, setShowTherapy] = useState(false);
+  const [vizMode, setVizMode] = useState('interactive');
+  const [pdfLoading, setPdfLoading] = useState(null);
+
+  const handleDownloadPDF = async (data, index = 'single') => {
+    setPdfLoading(index);
+    try {
+      const response = await axios.post(`${API_BASE}/download_pdf`, { data }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `RagaVision_Report_${data.filename || 'analysis'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("PDF Download Error:", err);
+      alert("Failed to generate PDF report.");
+    }
+    setPdfLoading(null);
+  };
   
   const waveformRef = useRef(null);
   const wavesurfer = useRef(null);
@@ -530,8 +665,13 @@ const App = () => {
 
                 <div className="result-header">
                   <div>
-                    <span className="label">Neural Prediction</span>
+                    <span className="label">Time Classification</span>
                     <h2 className="prediction-display">{result.neural_prediction}</h2>
+                    {result.filename && (
+                      <div style={{ fontSize: '2rem', color: 'var(--text-dim)', marginTop: '1.5rem', fontWeight: '600' }}>
+                        File: {result.filename}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
 
@@ -557,6 +697,23 @@ const App = () => {
                       <Heart size={16} fill={showTherapy ? '#0f1115' : 'transparent'} />
                       {showTherapy ? 'Hide Therapy Analysis' : 'View Therapy Analysis'}
                     </button>
+                    <button 
+                      onClick={() => handleDownloadPDF(result, 'single')}
+                      disabled={pdfLoading === 'single'}
+                      className="pdf-btn"
+                      style={{
+                        padding: '0.6rem 1.2rem',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'var(--primary)',
+                        border: '1px solid var(--primary)',
+                        borderRadius: '10px',
+                        fontWeight: '800',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {pdfLoading === 'single' ? 'Generating PDF...' : 'Download Full PDF Report'}
+                    </button>
                   </div>
                 </div>
 
@@ -577,14 +734,14 @@ const App = () => {
                     <div className="insight-item primary">
                       <Music size={20} />
                       <div>
-                        <span className="label">Identified Raag</span>
-                        <h3>{result.detected_raag}</h3>
+                        <span className="label">Primary Therapy</span>
+                        <h3>{result.therapy.recommendation.primary}</h3>
                       </div>
                     </div>
 
                     <div className="insight-item">
                       <Zap size={16} />
-                      <span>{result.neural_mood} Neural Mood Detected</span>
+                      <span>Mood Profile: Calm {result.therapy.therapy_scores.calm_score} | Energy {result.therapy.therapy_scores.energy_score} | Focus {result.therapy.therapy_scores.focus_score}</span>
                     </div>
 
                     <div className="swara-chips">
@@ -614,16 +771,59 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* --- LEGACY COMPREHENSIVE DASHBOARD (PROMINENT) MOVED HERE --- */}
-                {result.image_url && (
+                {/* --- NEW: INTERACTIVE REAL-TIME CHARTS --- */}
+                <div className="interactive-visuals card" style={{ marginTop: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--primary)' }}>
+                  <div className="label" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <Activity size={16} /> 
+                      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', border: '1px solid var(--border)' }}>
+                        <button 
+                          onClick={() => setVizMode('interactive')}
+                          style={{ border: 'none', background: vizMode === 'interactive' ? 'var(--primary)' : 'transparent', color: vizMode === 'interactive' ? '#000' : 'var(--text-dim)', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >INTERACTIVE</button>
+                        <button 
+                          onClick={() => setVizMode('png')}
+                          style={{ border: 'none', background: vizMode === 'png' ? 'var(--primary)' : 'transparent', color: vizMode === 'png' ? '#000' : 'var(--text-dim)', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >PNG MODE</button>
+                      </div>
+                    </div>
+                    {result.image_url && (
+                      <a href={result.image_url} download={`audio_analysis.png`} className="download-btn" style={{ padding: '0.4rem 0.8rem', background: 'var(--primary)', color: '#000', borderRadius: '4px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        Download PNG
+                      </a>
+                    )}
+                  </div>
+
+                  {vizMode === 'interactive' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                      <div>
+                        <span className="sub-label" style={{ fontSize: '0.7rem', opacity: 0.7 }}>Real-time Pitch Tracking (Hz)</span>
+                        <InteractivePitchChart data={result.pitch_contour_data} />
+                      </div>
+                      <div>
+                        <span className="sub-label" style={{ fontSize: '0.7rem', opacity: 0.7 }}>Swara Energy Distribution (%)</span>
+                        <InteractiveSwaraChart distribution={result.swara_distribution_data} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="static-dash-view" style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: '1px solid #333' }}>
+                      <img src={result.image_url} alt="Static Analysis Dashboard" style={{ width: '100%', display: 'block' }} />
+                    </div>
+                  )}
+                  
+                  <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                    Hover over data points to see precise neural extraction values and timestamps.
+                  </div>
+                </div>
+
+                {/* --- LEGACY COMPREHENSIVE DASHBOARD (PROMINENT) MOVED TO TAB OR HIDDEN IF INTERACTIVE IS PREFERRED --- */}
+                {/* We keep the image hidden but accessible via the download button above to reduce clutter */}
+                {false && result.image_url && (
                   <div className="analysis-visualization card" style={{ marginTop: '1.5rem', marginBottom: '0rem' }}>
                     <div className="label" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Layers size={16} /> Visual Analysis Dashboard
                       </div>
-                      <a href={result.image_url} download={`raga_analysis_${result.detected_raag}.png`} className="download-btn" style={{ padding: '0.4rem 0.8rem', background: 'var(--primary)', color: '#000', borderRadius: '4px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                        Download PNG
-                      </a>
                     </div>
                     <div className="image-container" style={{ textAlign: 'center', background: '#111', borderRadius: '8px', padding: '0.5rem' }}>
                       <img src={result.image_url} alt="Raga Analysis Dashboard" style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', display: 'block' }} />
@@ -668,7 +868,7 @@ const App = () => {
             </motion.div>
           )}
 
-          {bulkResults && <BulkResultsView data={bulkResults} files={files} />}
+          {bulkResults && <BulkResultsView data={bulkResults} files={files} handleDownloadPDF={handleDownloadPDF} pdfLoading={pdfLoading} />}
         </AnimatePresence>
       </div>
     </div>

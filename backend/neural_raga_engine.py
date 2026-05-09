@@ -70,6 +70,9 @@ class HybridRagaVision:
         chunk_features = []
         full_swara_sequence = []
         first_chunk_text = ""
+        first_f0 = None
+        first_voiced = None
+        pitch_contour = []
         
         for i, chunk in enumerate(chunks):
             if i * 10 > (duration if duration else 120): break
@@ -80,6 +83,9 @@ class HybridRagaVision:
             if i == 0:
                 first_chunk_text = features.get("text", "")
                 detailed_features = features.get("detailed_features", {})
+                first_f0 = features.get("_f0")
+                first_voiced = features.get("_voiced")
+                pitch_contour = features.get("pitch_contour", [])
 
         # --- PHASE 3: AGGREGATION ---
         aggregated = aggregate_features(chunk_features)
@@ -163,7 +169,20 @@ class HybridRagaVision:
                     image_url = f"/output/analysis_{stem}.png"
                 else:
                     # Fallback: Generate Full Dashboard dynamically
-                    plot_full_dashboard(aggregated, res.get("ranked", []), str(dash_path), stem)
+                    dashboard_features = {
+                        "_f0": first_f0,
+                        "_voiced": first_voiced,
+                        "swara_distribution": aggregated.get("swara_distribution", {}),
+                        "prediction": res.get("prediction", "Unknown")
+                    }
+                    confidence = res.get("confidence", 0.5)
+                    pred = res.get("prediction", "Day")
+                    if pred == "Day":
+                        ranked = [("Day", confidence), ("Night", 1.0 - confidence)]
+                    else:
+                        ranked = [("Night", confidence), ("Day", 1.0 - confidence)]
+                    
+                    plot_full_dashboard(dashboard_features, ranked, str(dash_path), stem)
                     image_url = f"/static/dash_{stem}.png"
                 
             except Exception as e:
@@ -200,8 +219,10 @@ class HybridRagaVision:
             },
             "report": res["analysis"]["dominant_features"],
             "detailed_features": detailed_features,
-            "therapy": get_therapy_output(aggregated),
-            "therapy_recommendation": get_therapy_output(aggregated),
+            "pitch_contour_data": pitch_contour,
+            "swara_distribution_data": aggregated.get("swara_distribution", {}),
+            "therapy": get_therapy_output({"metadata": aggregated}),
+            "therapy_recommendation": get_therapy_output({"metadata": aggregated}),
             "spectrogram_url": spectrogram_url
         }
 

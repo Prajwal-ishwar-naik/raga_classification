@@ -1,6 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
-from typing import List
+from fastapi.responses import JSONResponse, FileResponse
+from pydantic import BaseModel
+from typing import List, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
@@ -9,6 +11,7 @@ import uuid
 from pathlib import Path
 from neural_raga_engine import HybridRagaVision
 from audacity_loader import load_audacity_project
+from pdf_generator import generate_report_pdf
 
 
 # Resolve project root (one level above backend/)
@@ -72,14 +75,17 @@ def classify_bulk(files: List[UploadFile] = File(...)):
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
+            formatted_pred = f"{res['prediction']} Raga"
             results.append(
                 {
                     "filename": file.filename,
-                    "prediction": res["prediction"],
+                    "prediction": formatted_pred,
                     "confidence": res["confidence"],
                     "narrative": res["narrative"],
                     "spectrogram": res.get("spectrogram"),
                     "detailed_features": res.get("detailed_features"),
+                    "pitch_contour_data": res.get("pitch_contour_data", []),
+                    "swara_distribution_data": res.get("swara_distribution_data", {}),
                     "image_url": res.get("image_url"),
                     "therapy_recommendation": res.get("therapy"),
                     "therapy": res.get("therapy"),
@@ -100,6 +106,30 @@ def classify_bulk(files: List[UploadFile] = File(...)):
 
     return {"results": results}
 
+
+# Add Request model for PDF generation
+class PDFRequest(BaseModel):
+    data: Dict[str, Any]
+
+@app.post("/download_pdf")
+async def download_pdf(request: PDFRequest):
+    try:
+        data = request.data
+        filename = data.get("filename", "report")
+        stem = Path(filename).stem
+        # Use BASE_DIR to ensure we point to the correct static folder
+        pdf_path = BASE_DIR / "static" / f"report_{stem}.pdf"
+        
+        generate_report_pdf(data, str(pdf_path))
+        
+        return FileResponse(
+            str(pdf_path), 
+            media_type="application/pdf", 
+            filename=f"RagaVision_Report_{stem}.pdf"
+        )
+    except Exception as e:
+        print(f"PDF Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
 @app.post("/classify")
 def classify_audio(file: UploadFile = File(...)):
@@ -152,11 +182,14 @@ def classify_audio(file: UploadFile = File(...)):
                 temp_path, original_filename=file.filename, file_id=file_id
             )
 
+        formatted_pred = f"{result['prediction']} Raga"
+
         return {
-            "prediction": result["prediction"],
-            "neural_prediction": result["prediction"],
+            "prediction": formatted_pred,
+            "neural_prediction": formatted_pred,
             "neural_confidence": result["confidence"],
-            "detected_raag": result["detected_raag"],
+            "detected_raag": formatted_pred,
+            "filename": file.filename,
             "logic_score": result["logic_score"],
             "neural_mood": result["neural_mood"],
             "metadata": result["metadata"],
@@ -165,6 +198,8 @@ def classify_audio(file: UploadFile = File(...)):
             "spectrogram": result["spectrogram"],
             "detailed_features": result.get("detailed_features"),
             "image_url": result.get("image_url"),
+            "pitch_contour_data": result.get("pitch_contour_data", []),
+            "swara_distribution_data": result.get("swara_distribution_data", {}),
             "therapy_recommendation": result.get("therapy"),
             "therapy": result.get("therapy"),
         }

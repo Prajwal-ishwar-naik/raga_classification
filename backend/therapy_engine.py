@@ -12,8 +12,15 @@ def compute_therapy_scores(features):
     
     metadata = features.get("metadata", {})
     tempo = metadata.get("tempo", 80)
-    pitch_range = metadata.get("pitch_range", 150)
+    pitch_range_raw = metadata.get("pitch_range", 150)
     
+    if isinstance(pitch_range_raw, list) and len(pitch_range_raw) >= 2:
+        pitch_range = pitch_range_raw[1] - pitch_range_raw[0]
+    elif isinstance(pitch_range_raw, (int, float)):
+        pitch_range = pitch_range_raw
+    else:
+        pitch_range = 150
+        
     # Advanced features
     gamakas = metadata.get("gamakas", {})
     slides = gamakas.get("slides", "No")
@@ -122,7 +129,15 @@ def generate_therapy_explanation(features, scores):
     """
     metadata = features.get("metadata", {})
     tempo = metadata.get("tempo", 80)
-    pitch_range = metadata.get("pitch_range", 150)
+    pitch_range_raw = metadata.get("pitch_range", 150)
+    
+    if isinstance(pitch_range_raw, list) and len(pitch_range_raw) >= 2:
+        pitch_range = pitch_range_raw[1] - pitch_range_raw[0]
+    elif isinstance(pitch_range_raw, (int, float)):
+        pitch_range = pitch_range_raw
+    else:
+        pitch_range = 150
+        
     gamakas = metadata.get("gamakas", {})
     slides = gamakas.get("slides", "No")
     transitions = metadata.get("transitions", {})

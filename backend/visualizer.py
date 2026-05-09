@@ -98,7 +98,8 @@ def plot_full_dashboard(features, ranked, out_path, label):
 
     # 2. Swara Prominence
     ax2 = axes[1]
-    pc = np.array(features.get("pc_hist", np.zeros(12)))
+    swara_dist = features.get("swara_distribution", {})
+    pc = np.array([swara_dist.get(s, 0) for s in SWARA_NAMES])
     # For now, we use a simple color scheme as we don't have the full RAGA_DB in visualizer
     colors = ["#4A90D9"] * 12
     # Highlight vadi if known (usually the first note in detected_swaras)
@@ -108,18 +109,19 @@ def plot_full_dashboard(features, ranked, out_path, label):
     ax2.set_title("Swara Prominence Distribution", fontweight="bold")
     ax2.grid(axis="y", alpha=0.3)
 
-    # 3. Top-5 Raga Matches
+    # 3. Temporal Classification Matches
     ax3 = axes[2]
-    top5 = ranked[:5]
-    names = [r[0] for r in top5]
-    scrs = [r[1] for r in top5]
-    # Normalize scores for visualization if needed, but here we use raw scores
-    bcols = ["#E87040" if i == 0 else "#4A90D9" for i in range(len(names))]
+    if not ranked:
+        ranked = [("Day", 0.5), ("Night", 0.5)]
+    top2 = ranked[:2]
+    names = [r[0] for r in top2]
+    scrs = [r[1] for r in top2]
+    bcols = ["#E87040" if n == features.get("prediction", "Day") else "#4A90D9" for n in names]
     ax3.barh(names[::-1], scrs[::-1], color=bcols[::-1], edgecolor="white")
     for i, (n, s) in enumerate(zip(names[::-1], scrs[::-1])):
         ax3.text(max(s, 0) + 0.005, i, f"{s:.3f}", va="center", fontsize=10, fontweight="bold")
-    ax3.set_xlabel("Classification Score")
-    ax3.set_title("Top-5 Raga Matches", fontweight="bold")
+    ax3.set_xlabel("Confidence Score")
+    ax3.set_title("Temporal Classification (Day vs Night)", fontweight="bold")
     ax3.grid(axis="x", alpha=0.3)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
