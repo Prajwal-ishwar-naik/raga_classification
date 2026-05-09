@@ -138,6 +138,114 @@ const InteractiveSwaraChart = ({ distribution }) => {
   );
 };
 
+const CyberLoader = () => {
+  const [progress, setProgress] = useState(0);
+  const [log, setLog] = useState("SAMPLING");
+  const [isShattered, setIsShattered] = useState(false);
+  const hudRef = useRef(null);
+  
+  const logs = ["SAMPLING", "TUNING", "SYNCING", "MASTERING", "ANALYSING"];
+  const notes = ["♩", "♪", "♫", "♬", "♭", "♮", "♯"];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 98) return prev;
+        const next = prev + Math.floor(Math.random() * 2) + 1;
+        return next > 98 ? 98 : next;
+      });
+    }, 150);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (progress > 85) {
+      setLog("ANALYSING");
+    } else if (progress % 20 === 0) {
+      setLog(logs[Math.floor(Math.random() * logs.length)]);
+    }
+    createMusicNote();
+  }, [progress]);
+
+  const createMusicNote = () => {
+    if (!hudRef.current) return;
+    const noteEl = document.createElement('div');
+    noteEl.className = 'musical-note';
+    noteEl.innerText = notes[Math.floor(Math.random() * notes.length)];
+    
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 80 + Math.random() * 40;
+    
+    noteEl.style.position = 'absolute';
+    noteEl.style.left = `calc(50% + ${Math.cos(angle) * dist}px)`;
+    noteEl.style.top = `calc(50% + ${Math.sin(angle) * dist}px)`;
+    noteEl.style.color = '#00f2ff';
+    noteEl.style.fontSize = '18px';
+    noteEl.style.textShadow = '0 0 5px #00f2ff';
+    noteEl.style.pointerEvents = 'none';
+    
+    hudRef.current.appendChild(noteEl);
+
+    const randomRotation = Math.random() * 40 - 20; 
+    noteEl.animate([
+      { opacity: 0, transform: `translateY(0) rotate(0deg)` },
+      { opacity: 1, transform: `translateY(-25px) rotate(${randomRotation}deg)` },
+      { opacity: 0, transform: `translateY(-50px) rotate(${randomRotation * 2}deg)` }
+    ], { 
+      duration: 1200, 
+      easing: 'ease-out' 
+    }).onfinish = () => noteEl.remove();
+  };
+
+  return (
+    <div className="cyber-loader-overlay">
+      <style>{`
+        .cyber-loader-overlay {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(2, 11, 16, 0.95);
+          display: flex; justify-content: center; align-items: center;
+          z-index: 9999; overflow: hidden;
+        }
+        .hud-container {
+          position: relative; width: 300px; height: 300px;
+          display: flex; justify-content: center; align-items: center;
+          animation: bootUp 1s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+        .ring-outer {
+          position: absolute; width: 280px; height: 280px; border-radius: 50%;
+          border: 2px solid transparent; border-top: 3px solid #00f2ff;
+          border-bottom: 3px solid #00f2ff; animation: rotate 4s linear infinite;
+          filter: drop-shadow(0 0 10px #00f2ff);
+        }
+        .ring-middle {
+          position: absolute; width: 240px; height: 240px; border-radius: 50%;
+          border: 2px dashed rgba(0, 242, 255, 0.5); animation: rotate 8s linear infinite reverse;
+        }
+        .core {
+          position: relative; width: 180px; height: 180px;
+          background: radial-gradient(circle, rgba(0, 242, 255, 0.1) 0%, transparent 70%);
+          border-radius: 50%; display: flex; flex-direction: column;
+          justify-content: center; align-items: center; color: #00f2ff;
+          text-shadow: 0 0 10px #00f2ff; font-family: monospace;
+        }
+        .percent { font-size: 2.5rem; font-weight: bold; }
+        .status-text { font-size: 0.6rem; letter-spacing: 4px; text-transform: uppercase; margin-top: 5px; }
+        @keyframes bootUp { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+      `}</style>
+      <div className="hud-container" ref={hudRef}>
+        <div className="ring-outer"></div>
+        <div className="ring-middle"></div>
+        <div className="core">
+          <div className="percent">{progress}%</div>
+          <div className="status-text">{log}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BulkResultsView = ({ data, files, handleDownloadPDF, pdfLoading }) => {
   const dayCount = data.filter(r => r.prediction.includes('Day')).length;
   const nightCount = data.filter(r => r.prediction.includes('Night')).length;
@@ -531,6 +639,8 @@ const App = () => {
         <p className="subtitle">Enterprise Neural Intelligence</p>
         <h1 className="main-title">RAGA VISION <span className="neural-text">BULK EDITION</span></h1>
       </header>
+
+      {loading && <CyberLoader />}
 
       <div className="main-layout">
         <section className="card glass-card">
