@@ -16,13 +16,24 @@ import {
   Focus,
   Activity,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  Globe,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  History,
+  MessageCircle,
+  Send,
+  X,
+  Bot,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, AreaChart, Area
 } from 'recharts';
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://127.0.0.1:8001";
 const SpectrogramView = ({ data }) => {
   const canvasRef = useRef(null);
 
@@ -246,7 +257,7 @@ const CyberLoader = () => {
   );
 };
 
-const BulkResultsView = ({ data, files, handleDownloadPDF, pdfLoading }) => {
+const BulkResultsView = ({ data, files, handleDownloadPDF, pdfLoading, handleProcessPDF, processingStatus, indexingProgress, chunkCount, openChat }) => {
   const dayCount = data.filter(r => r.prediction.includes('Day')).length;
   const nightCount = data.filter(r => r.prediction.includes('Night')).length;
   const [expandedIndex, setExpandedIndex] = useState(null);
@@ -302,6 +313,28 @@ const BulkResultsView = ({ data, files, handleDownloadPDF, pdfLoading }) => {
                     style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
                   >
                     {pdfLoading === i ? '...' : 'PDF Report'}
+                  </button>
+                  <button 
+                    className="process-pdf-btn summarize-btn"
+                    onClick={() => {
+                      if (processingStatus[item.filename] === 'indexed') {
+                        openChat(item);
+                      } else {
+                        handleProcessPDF(item);
+                      }
+                    }}
+                    disabled={processingStatus[item.filename] === 'indexing'}
+                    style={{ 
+                      background: processingStatus[item.filename] === 'indexed' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #059669, #10b981)', 
+                      color: 'white', 
+                      border: 'none',
+                      fontWeight: 800,
+                      boxShadow: processingStatus[item.filename] === 'indexed' ? '0 4px 10px rgba(59, 130, 246, 0.3)' : '0 4px 10px rgba(16, 185, 129, 0.2)',
+                      minWidth: '100px'
+                    }}
+                  >
+                    {processingStatus[item.filename] === 'indexing' ? <Sparkles className="animate-spin" size={12} /> : processingStatus[item.filename] === 'indexed' ? <Bot size={12} /> : <Database size={12} />}
+                    {processingStatus[item.filename] === 'indexing' ? `Processing... ${Math.min(indexingProgress[item.filename] || 0, 99)}%` : processingStatus[item.filename] === 'indexed' ? 'Open Chat' : 'Process'}
                   </button>
                   <button 
                     className={`summarize-btn ${expandedIndex === i && viewMode === 'narrative' ? 'active' : ''}`}
@@ -556,6 +589,221 @@ const DetailedFeatureAnalysis = ({ features }) => {
   );
 };
 
+// ======================= RAG CHATBOT SIDEBAR =======================
+const ChatSidebar = ({ isOpen, onClose, analysisResult, indexingStatus, chunkCount }) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => { scrollToBottom(); }, [messages, isTyping]);
+
+  // Initial welcome message once indexed
+  useEffect(() => {
+    if (isOpen && indexingStatus === 'indexed' && messages.length === 0) {
+      setMessages([{
+        role: 'bot',
+        text: `✅ PDF Report Processed! I've indexed ${chunkCount} data chunks. I am now strictly grounded in this analysis. Ask me anything about the swaras, mood, or therapy recommendations!`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: []
+      }]);
+    }
+  }, [isOpen, indexingStatus]);
+
+  const handleSend = async () => {
+    const question = input.trim();
+    if (!question) return;
+
+    const userMsg = {
+      role: 'user',
+      text: question,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const stem = analysisResult?.filename ? analysisResult.filename.split('.')[0] : null;
+      const res = await axios.post(`${API_BASE}/chat`, { 
+        question, 
+        filename: stem 
+      });
+      const botMsg = {
+        role: 'bot',
+        text: res.data.answer,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: res.data.sources || [],
+        images: res.data.related_images || []
+      };
+      setMessages(prev => [...prev, botMsg]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      const errorMsg = err.response?.data?.detail || 'Sorry, I encountered an error connecting to the AI. Please ensure the backend is running.';
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: errorMsg,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: []
+      }]);
+    }
+    setIsTyping(false);
+  };
+
+  const handleSuggestion = (q) => {
+    setInput(q);
+    setTimeout(() => handleSendWithInput(q), 100);
+  };
+
+  const handleSendWithInput = async (question) => {
+    if (!question) return;
+    const userMsg = {
+      role: 'user',
+      text: question,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsTyping(true);
+    try {
+      const stem = analysisResult?.filename ? analysisResult.filename.split('.')[0] : null;
+      const res = await axios.post(`${API_BASE}/chat`, { 
+        question, 
+        filename: stem 
+      });
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: res.data.answer,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: res.data.sources || [],
+        images: res.data.related_images || []
+      }]);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: 'Sorry, something went wrong.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sources: []
+      }]);
+    }
+    setIsTyping(false);
+  };
+
+  const suggestions = [
+    "Why was this classified as this raga?",
+    "What swaras were detected?",
+    "Explain the therapy recommendation",
+    "What is the Pakad pattern?",
+    "What does the spectrogram show?",
+    "What is the optimal time for this raga?"
+  ];
+
+  return (
+    <div className={`chat-sidebar ${isOpen ? 'open' : ''}`}>
+      {/* Header */}
+      <div className="chat-header">
+        <div className="chat-header-left">
+          <Bot size={22} style={{ color: 'var(--primary)' }} />
+          <div>
+            <h3>Raga Assistant</h3>
+            <div className="chat-status">
+              <span className="dot"></span>
+              <span>RAG-powered • {chunkCount} chunks indexed</span>
+            </div>
+          </div>
+        </div>
+        <button className="chat-close-btn" onClick={onClose}>
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Index Status Banner */}
+      {indexingStatus === 'indexing' && (
+        <div className="chat-index-banner indexing">
+          <Database size={14} /> Indexing report into vector database...
+        </div>
+      )}
+      {indexingStatus === 'indexed' && chunkCount > 0 && (
+        <div className="chat-index-banner indexed">
+          <CheckCircle2 size={14} /> Report indexed • {chunkCount} chunks in ChromaDB
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="chat-messages">
+        {messages.length === 0 && indexingStatus !== 'indexing' && (
+          <div className="chat-suggestions">
+            <span className="chat-suggestions-title">Suggested Questions</span>
+            {suggestions.map((q, i) => (
+              <button key={i} className="suggestion-chip" onClick={() => handleSuggestion(q)}>
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`chat-msg ${msg.role}`}>
+            <div className="bubble">
+              {msg.text.split('\n').map((line, j) => (
+                <span key={j}>{line}<br/></span>
+              ))}
+            </div>
+            {/* Source badges */}
+            {msg.sources && msg.sources.length > 0 && (
+              <div className="chat-sources">
+                {msg.sources.slice(0, 3).map((s, j) => (
+                  <span key={j} className="chat-source-badge">
+                    {s.section} ({(s.relevance * 100).toFixed(0)}%)
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Inline images */}
+            {msg.images && msg.images.map((img, j) => (
+              <div key={j} className="chat-image-preview">
+                <img src={`${API_BASE}${img}`} alt="Analysis" />
+              </div>
+            ))}
+            <div className="msg-time">{msg.time}</div>
+          </div>
+        ))}
+
+        {isTyping && (
+          <div className="chat-msg bot">
+            <div className="typing-indicator">
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="chat-input-area">
+        <input
+          className="chat-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Ask about the analysis..."
+          disabled={isTyping}
+        />
+        <button className="chat-send-btn" onClick={handleSend} disabled={isTyping || !input.trim()}>
+          <Send size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
 const App = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -566,6 +814,63 @@ const App = () => {
   const [showTherapy, setShowTherapy] = useState(false);
   const [vizMode, setVizMode] = useState('interactive');
   const [pdfLoading, setPdfLoading] = useState(null);
+  const [lang, setLang] = useState('en');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordTime, setRecordTime] = useState(0);
+  const [activeTab, setActiveTab] = useState('upload'); 
+  const [feedbackSaved, setFeedbackSaved] = useState(false);
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [correctedRaga, setCorrectedRaga] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeChatResult, setActiveChatResult] = useState(null);
+  const [processingStatus, setProcessingStatus] = useState({}); // { [filename]: 'indexing' | 'indexed' | 'error' }
+  const [indexingProgress, setIndexingProgress] = useState({}); // { [filename]: number }
+  const [chunkCount, setChunkCount] = useState(0);
+
+  const handleProcessPDF = async (data = result) => {
+    if (!data?.filename) return;
+    const fname = data.filename;
+    
+    // Set chat context but DO NOT change the main `result` view to prevent jumping UI
+    setActiveChatResult(data); 
+    
+    setProcessingStatus(prev => ({ ...prev, [fname]: 'indexing' }));
+    setIndexingProgress(prev => ({ ...prev, [fname]: 0 }));
+    setChunkCount(0);
+    
+    // Simulate 1-99% progress
+    const progressInterval = setInterval(() => {
+      setIndexingProgress(prev => {
+        const current = prev[fname] || 0;
+        if (current >= 95) return prev; // Hold at 95% until complete
+        return { ...prev, [fname]: current + Math.floor(Math.random() * 15) + 5 };
+      });
+    }, 400);
+
+    try {
+      // 1. Trigger PDF Generation (No download link clicked here)
+      await axios.post(`${API_BASE}/download_pdf`, { data }, { responseType: 'blob' });
+      
+      // 2. Trigger Indexing
+      const res = await axios.post(`${API_BASE}/index_pdf`, { filename: fname });
+      
+      clearInterval(progressInterval);
+      setIndexingProgress(prev => ({ ...prev, [fname]: 100 }));
+      
+      const total = res.data.total_chunks || 0;
+      setChunkCount(total);
+      setProcessingStatus(prev => ({ ...prev, [fname]: 'indexed' }));
+      // Removed setChatOpen(true) as per user request
+    } catch (err) {
+      console.error('Process PDF error:', err);
+      clearInterval(progressInterval);
+      setProcessingStatus(prev => ({ ...prev, [fname]: 'error' }));
+    }
+  };
+
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
+  const timerInterval = useRef(null);
 
   const handleDownloadPDF = async (data, index = 'single') => {
     setPdfLoading(index);
@@ -583,6 +888,48 @@ const App = () => {
       alert("Failed to generate PDF report.");
     }
     setPdfLoading(null);
+  };
+
+  const handleFeedback = async (correct) => {
+    try {
+      await axios.post(`${API_BASE}/feedback`, {
+        filename: result?.filename || 'live_recording.wav',
+        predicted_raga: result?.prediction || 'Unknown',
+        correct_raga: correct || result?.prediction
+      });
+      setFeedbackSaved(true);
+      setShowCorrection(false);
+    } catch (err) {
+      console.error("Feedback Error:", err);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+      
+      mediaRecorder.current.ondataavailable = (e) => audioChunks.current.push(e.data);
+      mediaRecorder.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        const file = new File([audioBlob], "live_recording.wav", { type: 'audio/wav' });
+        setFiles([file]);
+      };
+
+      mediaRecorder.current.start();
+      setIsRecording(true);
+      setRecordTime(0);
+      timerInterval.current = setInterval(() => setRecordTime(prev => prev + 1), 1000);
+    } catch (err) {
+      setError("Mic Access Denied: " + err.message);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current?.stop();
+    setIsRecording(false);
+    clearInterval(timerInterval.current);
   };
   
   const waveformRef = useRef(null);
@@ -615,15 +962,16 @@ const App = () => {
     if (files.length === 1) {
       formData.append('file', files[0]);
       try {
-        const response = await axios.post(`${API_BASE}/classify`, formData);
+        const response = await axios.post(`${API_BASE}/classify?lang=${lang}`, formData);
         setResult(response.data);
+        setFeedbackSaved(false);
       } catch (err) {
         setError('Inference Error: ' + (err.response?.data?.detail || 'Server Down'));
       }
     } else {
       Array.from(files).forEach(f => formData.append('files', f));
       try {
-        const response = await axios.post(`${API_BASE}/classify_bulk`, formData);
+        const response = await axios.post(`${API_BASE}/classify_bulk?lang=${lang}`, formData);
         setBulkResults(response.data.results);
       } catch (err) {
         const detail = err.response?.data?.detail || err.message;
@@ -636,55 +984,118 @@ const App = () => {
   return (
     <div className="container">
       <header>
-        <p className="subtitle">Enterprise Neural Intelligence</p>
+        <div className="lang-selector">
+          <Globe size={16} />
+          <select className="lang-select" value={lang} onChange={(e) => setLang(e.target.value)}>
+            <option value="en">EN</option>
+            <option value="hi">हिन्दी</option>
+            <option value="mr">मराठी</option>
+            <option value="ta">தமிழ்</option>
+          </select>
+        </div>
+        <span className="subtitle">Neuro-Symbolic Musicology</span>
         <h1 className="main-title">RAGA VISION <span className="neural-text">BULK EDITION</span></h1>
       </header>
 
       {loading && <CyberLoader />}
 
       <div className="main-layout">
-        <section className="card glass-card">
-          {files.length === 0 ? (
-            <div className="upload-zone" onClick={() => document.getElementById('audio-input').click()}>
-              <Files className="upload-icon" size={60} />
-              <h3 className="upload-title">Bulk Audio Input</h3>
-              <p className="upload-subtitle">Select multiple WAV, MP3, or Opus Raag recordings</p>
-              <input 
-                id="audio-input" 
-                type="file" 
-                multiple 
-                onChange={(e) => setFiles(Array.from(e.target.files))} 
-                style={{ display: 'none' }} 
-              />
+        {!result && !bulkResults && (
+          <motion.div className="card glass-card" layout>
+            <div className="tabs-header">
+              <button 
+                className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
+                onClick={() => setActiveTab('upload')}
+              >
+                Upload File
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'record' ? 'active' : ''}`}
+                onClick={() => setActiveTab('record')}
+              >
+                Record Live
+              </button>
             </div>
-          ) : (
-            <div className="analyzer-view">
-              <div className="file-info">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                  <TrendingUp color="var(--primary)" size={18} />
-                  <span style={{ fontWeight: 700 }}>{files.length} Samples Staged for Analysis</span>
+
+            {activeTab === 'upload' ? (
+              <div 
+                className="upload-zone"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setFiles(Array.from(e.dataTransfer.files));
+                }}
+                onClick={() => document.getElementById('fileInput').click()}
+              >
+                <div className="upload-icon">
+                  <Music size={64} strokeWidth={1.5} />
                 </div>
-                <button className="reset-btn" onClick={() => { setFiles([]); setResult(null); setBulkResults(null); }}>Clear Session</button>
+                <h2 className="upload-title">Drop your audio here</h2>
+                <p className="upload-subtitle">WAV, MP3, or FLAC (Max 20MB)</p>
+                <input 
+                  id="fileInput"
+                  type="file" 
+                  style={{ display: 'none' }} 
+                  onChange={(e) => setFiles(Array.from(e.target.files))}
+                  multiple
+                />
               </div>
-
-              {files.length === 1 && <div className="waveform-box" ref={waveformRef}></div>}
-
-              <div className="action-row">
-                {files.length === 1 && (
-                  <button className="play-btn" onClick={() => { wavesurfer.current.playPause(); setPlaying(!playing); }}>
-                    {playing ? <Pause size={24} /> : <Play size={24} />}
-                  </button>
-                )}
-                {!result && !bulkResults && (
-                  <button className="analyze-btn" onClick={handleUpload} disabled={loading}>
-                    {loading ? 'Processing Neural Queue...' : `Analyze ${files.length} Input(s)`}
-                  </button>
+            ) : (
+              <div className="recording-tab">
+                <div className="record-timer">
+                  {Math.floor(recordTime / 60)}:{(recordTime % 60).toString().padStart(2, '0')}
+                </div>
+                <button 
+                  className={`mic-btn ${isRecording ? 'recording' : ''}`}
+                  onClick={isRecording ? stopRecording : startRecording}
+                >
+                  <Mic size={48} />
+                </button>
+                <p className="upload-subtitle">
+                  {isRecording ? "Recording Swaras..." : "Click to start session"}
+                </p>
+                {files && files[0]?.name === 'live_recording.wav' && (
+                  <div className="file-info">
+                    <History size={18} />
+                    <span>Live Recording Ready</span>
+                    <button className="reset-btn" onClick={() => setFiles([])}>Reset</button>
+                  </div>
                 )}
               </div>
-              {error && <div className="error-box">{error}</div>}
-            </div>
-          )}
-        </section>
+            )}
+
+            <AnimatePresence>
+              {files && files.length > 0 && (
+                <motion.div 
+                  className="analyzer-view"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <div className="file-info">
+                    <Music size={18} />
+                    <span>{files.length} file(s) selected</span>
+                    <button className="reset-btn" onClick={() => { setFiles([]); setResult(null); setBulkResults(null); }}>Reset</button>
+                  </div>
+
+                  {files.length === 1 && <div className="waveform-box" ref={waveformRef}></div>}
+
+                  <div className="action-row">
+                    {files.length === 1 && (
+                      <button className="play-btn" onClick={() => { wavesurfer.current.playPause(); setPlaying(!playing); }}>
+                        {playing ? <Pause size={24} /> : <Play size={24} />}
+                      </button>
+                    )}
+                    <button className="analyze-btn" onClick={handleUpload} disabled={loading}>
+                      {loading ? 'Processing Neural Queue...' : `Analyze ${files.length} Input(s)`}
+                    </button>
+                  </div>
+                  {error && <div className="error-box">{error}</div>}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         <AnimatePresence>
           {result && (
@@ -748,13 +1159,16 @@ const App = () => {
                               {result.therapy.recommendation.primary}
                             </div>
                           </div>
-                          <div>
-                            <span className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>Secondary Recommendations</span>
-                            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-dim)', fontWeight: 600 }}>
-                              {result.therapy.recommendation.secondary.map((rec, i) => (
-                                <li key={i} style={{ marginBottom: '0.25rem' }}>{rec}</li>
+                          <div className="session-planner">
+                            <span className="sub-label">Raga Therapy Session Planner (1 Hour)</span>
+                            <div className="timeline">
+                              {result.therapy.session_plan.map((r, i) => (
+                                <div key={i} className="timeline-item">
+                                  <span className="time">{i === 0 ? "0m - 20m" : i === 1 ? "20m - 45m" : "45m - 60m"}</span>
+                                  <span className="raga">{r}</span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         </div>
 
@@ -767,6 +1181,11 @@ const App = () => {
                               ))}
                             </ul>
                           </div>
+                          {result.therapy.raga_metadata?.science_note && (
+                            <div className="science-note-card">
+                              <strong>Note:</strong> {result.therapy.raga_metadata.science_note}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -774,16 +1193,87 @@ const App = () => {
                 </AnimatePresence>
 
                 <div className="result-header">
-                  <div>
-                    <span className="label">Time Classification</span>
-                    <h2 className="prediction-display">{result.neural_prediction}</h2>
-                    {result.filename && (
-                      <div style={{ fontSize: '2rem', color: 'var(--text-dim)', marginTop: '1.5rem', fontWeight: '600' }}>
-                        File: {result.filename}
+                  <div style={{ flex: 1 }}>
+                    <span className="label">Identified Raag</span>
+                    <h2 className="prediction-display">{result.prediction}</h2>
+                    
+                    <div className="swara-chips">
+                      {result.metadata.swaras.map(s => (
+                        <span key={s} className="swara-chip">{s}</span>
+                      ))}
+                    </div>
+
+                    <div className="meta-grid">
+                      <div className="meta-chip">
+                        <span className="m-label">Rasa</span>
+                        <span className="m-val">{result.therapy?.raga_metadata?.rasa || 'Universal'}</span>
                       </div>
-                    )}
+                      <div className="meta-chip">
+                        <span className="m-label">Vadi</span>
+                        <span className="m-val">{result.therapy?.raga_metadata?.vadi || 'N/A'}</span>
+                      </div>
+                      <div className="meta-chip">
+                        <span className="m-label">Samvadi</span>
+                        <span className="m-val">{result.therapy?.raga_metadata?.samvadi || 'N/A'}</span>
+                      </div>
+                      <div className="meta-chip">
+                        <span className="m-label">Ideal Time</span>
+                        <span className="m-val">{result.therapy?.raga_metadata?.optimal_time || 'Anytime'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+                  <div className="confidence-ring">
+                    <div className="label">Confidence</div>
+                    <div className="conf-value">{Math.round(result.confidence * 100)}%</div>
+                    <div className="conf-label">Neural match</div>
+                  </div>
+                </div>
+
+                <div className="narrative-section">
+                  <div className="label" style={{ marginBottom: '1rem' }}>AI Narrative Analysis</div>
+                  <p className="narrative-text">{result.narrative}</p>
+                </div>
+
+                {/* Feedback Loop */}
+                <div className="feedback-widget">
+                  {feedbackSaved ? (
+                    <div className="rec-badge primary">
+                      <CheckCircle2 size={20} />
+                      Feedback Recorded. Thank you!
+                    </div>
+                  ) : showCorrection ? (
+                    <div className="feedback-correction">
+                      <span className="sub-label">Correct the Raag:</span>
+                      <select 
+                        className="correction-select"
+                        onChange={(e) => setCorrectedRaga(e.target.value)}
+                      >
+                        <option value="">Select correct raga...</option>
+                        {["Bhairav", "Yaman", "Bhairavi", "Malkauns", "Durga", "Todi", "Bageshri", "Kedar", "Darbari", "Bhimpalasi", "Kafi", "Hamsadhwani"].map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <button className="analyze-btn" onClick={() => handleFeedback(correctedRaga)}>
+                        Submit Correction
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="sub-label">Was this classification correct?</span>
+                      <div className="feedback-btns">
+                        <button className="feedback-btn yes" onClick={() => handleFeedback()}>
+                          <ThumbsUp size={18} /> Yes
+                        </button>
+                        <button className="feedback-btn no" onClick={() => setShowCorrection(true)}>
+                          <ThumbsDown size={18} /> No
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="result-header" style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+                  <div>
 
                     <button 
                       onClick={() => setShowTherapy(!showTherapy)}
@@ -823,6 +1313,37 @@ const App = () => {
                       }}
                     >
                       {pdfLoading === 'single' ? 'Generating PDF...' : 'Download Full PDF Report'}
+                    </button>
+                    <button 
+                      className="process-pdf-btn"
+                      onClick={() => {
+                        if (processingStatus[result?.filename] === 'indexed') {
+                          setActiveChatResult(result);
+                          setChatOpen(true);
+                        } else {
+                          handleProcessPDF();
+                        }
+                      }}
+                      disabled={processingStatus[result?.filename] === 'indexing'}
+                      style={{
+                        padding: '0.6rem 1.2rem',
+                        background: processingStatus[result?.filename] === 'indexed' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #059669, #10b981)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: '800',
+                        fontSize: '0.85rem',
+                        cursor: processingStatus[result?.filename] === 'indexing' ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.3s',
+                        boxShadow: processingStatus[result?.filename] === 'indexed' ? '0 4px 12px rgba(59, 130, 246, 0.3)' : '0 4px 12px rgba(16, 185, 129, 0.3)',
+                        opacity: processingStatus[result?.filename] === 'indexing' ? 0.7 : 1
+                      }}
+                    >
+                      {processingStatus[result?.filename] === 'indexing' ? <Sparkles className="animate-spin" size={16} /> : processingStatus[result?.filename] === 'indexed' ? <Bot size={16} /> : <Database size={16} />}
+                      {processingStatus[result?.filename] === 'indexing' ? `Embedding Chunks... ${Math.min(indexingProgress[result?.filename] || 0, 99)}%` : processingStatus[result?.filename] === 'indexed' ? 'Open Raga Chatbot' : 'Process for RAG Chat'}
                     </button>
                   </div>
                 </div>
@@ -978,9 +1499,43 @@ const App = () => {
             </motion.div>
           )}
 
-          {bulkResults && <BulkResultsView data={bulkResults} files={files} handleDownloadPDF={handleDownloadPDF} pdfLoading={pdfLoading} />}
+          {bulkResults && (
+            <BulkResultsView 
+              data={bulkResults} 
+              files={files} 
+              handleDownloadPDF={handleDownloadPDF} 
+              pdfLoading={pdfLoading} 
+              handleProcessPDF={handleProcessPDF}
+              processingStatus={processingStatus}
+              indexingProgress={indexingProgress}
+              chunkCount={chunkCount}
+              openChat={(item) => {
+                setActiveChatResult(item);
+                setChatOpen(true);
+              }}
+            />
+          )}
         </AnimatePresence>
       </div>
+      {/* RAG Chatbot Sidebar */}
+      <ChatSidebar 
+        isOpen={chatOpen} 
+        onClose={() => setChatOpen(false)} 
+        analysisResult={activeChatResult || result}
+        indexingStatus={processingStatus[(activeChatResult || result)?.filename] || 'idle'}
+        chunkCount={chunkCount}
+      />
+
+      {/* Floating Chat Toggle Button */}
+      {(result || bulkResults) && (
+        <button 
+          className={`chat-toggle-btn ${chatOpen ? 'active' : ''}`}
+          onClick={() => setChatOpen(!chatOpen)}
+          title="Ask AI about your analysis"
+        >
+          {chatOpen ? <X size={24} /> : <MessageCircle size={24} />}
+        </button>
+      )}
     </div>
   );
 };

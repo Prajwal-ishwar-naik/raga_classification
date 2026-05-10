@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
@@ -12,6 +12,20 @@ from pathlib import Path
 from neural_raga_engine import HybridRagaVision
 from audacity_loader import load_audacity_project
 from pdf_generator import generate_report_pdf
+from feedback import save_feedback
+from rag_engine import RagaChatEngine
+
+class FeedbackRequest(BaseModel):
+    filename: str
+    predicted_raga: str
+    correct_raga: str
+
+class ChatRequest(BaseModel):
+    question: str
+    filename: Optional[str] = None
+
+class IndexPDFRequest(BaseModel):
+    filename: str
 
 
 # Resolve project root (one level above backend/)
@@ -19,6 +33,10 @@ BASE_DIR = Path(__file__).parent.parent
 
 # Initialize the Hybrid Neural-Symbolic Engine
 neural_engine = HybridRagaVision()
+
+# Initialize the RAG Chatbot Engine
+rag_engine = RagaChatEngine()
+rag_engine.index_raga_knowledge()  # Index music theory on startup
 
 app = FastAPI(title="Raga Vision - Hybrid Intelligence")
 
@@ -46,9 +64,53 @@ def read_root():
     return {"message": "Neural Raga API is running"}
 
 
+@app.post("/feedback")
+def submit_feedback(request: FeedbackRequest):
+    try:
+        save_feedback(request.filename, request.predicted_raga, request.correct_raga)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ======================= RAG CHATBOT ENDPOINTS =======================
+
+@app.post("/index_pdf")
+def index_pdf(request: IndexPDFRequest):
+    """Index a generated PDF report + images into the vector store."""
+    filename = request.filename
+    stem = Path(filename).stem
+    pdf_path = str(BASE_DIR / "static" / f"report_{stem}.pdf")
+
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail=f"PDF report not found. Please download the PDF first.")
+
+    # Find related images
+    image_paths = []
+    for prefix in ["spec_", "dash_"]:
+        img_path = str(BASE_DIR / "static" / f"{prefix}{stem}.png")
+        if os.path.exists(img_path):
+            image_paths.append(img_path)
+
+    result = rag_engine.index_pdf(pdf_path, filename=stem, image_paths=image_paths)
+    return result
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    """Query the RAG chatbot with a question about the analysis."""
+    result = rag_engine.query(request.question, filename=request.filename)
+    return result
+
+@app.get("/rag_status")
+def rag_status():
+    """Check RAG engine status and chunk count."""
+    return {
+        "status": "active",
+        "total_chunks": rag_engine.get_chunk_count()
+    }
+
 @app.post("/classify_bulk")
-def classify_bulk(files: List[UploadFile] = File(...)):
-    print(f"[SERVER] Received bulk request for {len(files)} files")
+def classify_bulk(files: List[UploadFile] = File(...), lang: str = "en"):
+    print(f"[SERVER] Received bulk request for {len(files)} files in language {lang}")
     results = []
 
     for file in files:
@@ -68,7 +130,7 @@ def classify_bulk(files: List[UploadFile] = File(...)):
 
             # Neural Inference - Ultra Fast Semantic-Acoustic Fusion
             res = neural_engine.analyze(
-                temp_path, duration=8, original_filename=file.filename, file_id=file_id
+                temp_path, duration=8, original_filename=file.filename, file_id=file_id, lang=lang
             )
 
             # Clean up immediately for bulk
@@ -101,6 +163,17 @@ def classify_bulk(files: List[UploadFile] = File(...)):
                     "prediction": "Analysis Failed",
                     "confidence": 0,
                     "narrative": f"Error: {str(e)}",
+                    "metadata": {"swaras": []},
+                    "therapy": {
+                        "recommendation": {"primary": "N/A", "secondary": []},
+                        "therapy_scores": {"calm_score": 0, "energy_score": 0, "focus_score": 0},
+                        "explanation": [],
+                        "session_plan": [],
+                        "raga_metadata": None
+                    },
+                    "report": [f"Technical Error: {str(e)}"],
+                    "pitch_contour_data": [],
+                    "swara_distribution_data": {},
                 }
             )
 
@@ -132,8 +205,8 @@ async def download_pdf(request: PDFRequest):
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
 @app.post("/classify")
-def classify_audio(file: UploadFile = File(...)):
-    print(f"[SERVER] Received classification request for: {file.filename}")
+def classify_audio(file: UploadFile = File(...), lang: str = "en"):
+    print(f"[SERVER] Received classification request for: {file.filename} in language {lang}")
     filename_lower = file.filename.lower()
     allowed_extensions = (
         ".wav",
@@ -164,14 +237,14 @@ def classify_audio(file: UploadFile = File(...)):
                 shutil.copyfileobj(file.file, buffer)
             try:
                 result = neural_engine.analyze(
-                    temp_path, original_filename=file.filename, file_id=file_id
+                    temp_path, original_filename=file.filename, file_id=file_id, lang=lang
                 )
             except Exception:
                 # Fallback: check local day_ragas folder
                 local_path = str(BASE_DIR / "data" / "day_ragas" / file.filename)
                 if os.path.exists(local_path):
                     result = neural_engine.analyze(
-                        local_path, original_filename=file.filename, file_id=file_id
+                        local_path, original_filename=file.filename, file_id=file_id, lang=lang
                     )
                 else:
                     raise
@@ -179,10 +252,37 @@ def classify_audio(file: UploadFile = File(...)):
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             result = neural_engine.analyze(
-                temp_path, original_filename=file.filename, file_id=file_id
+                temp_path, original_filename=file.filename, file_id=file_id, lang=lang
             )
 
         formatted_pred = f"{result['prediction']} Raga"
+
+        # Auto-generate and index PDF for RAG chatbot
+        try:
+            stem = Path(file.filename).stem
+            pdf_path = str(BASE_DIR / "static" / f"report_{stem}.pdf")
+            full_result = {
+                "filename": file.filename,
+                "prediction": formatted_pred,
+                "neural_mood": result["neural_mood"],
+                "confidence": result["confidence"],
+                "metadata": result["metadata"],
+                "report": result["report"],
+                "narrative": result["narrative"],
+                "detailed_features": result.get("detailed_features"),
+                "image_url": result.get("image_url"),
+                "therapy": result.get("therapy"),
+            }
+            generate_report_pdf(full_result, pdf_path)
+            # Auto-index into RAG
+            image_paths = []
+            for prefix in ["spec_", "dash_"]:
+                img = str(BASE_DIR / "static" / f"{prefix}{stem}.png")
+                if os.path.exists(img):
+                    image_paths.append(img)
+            rag_engine.index_pdf(pdf_path, filename=stem, image_paths=image_paths)
+        except Exception as e:
+            print(f"[RAG AUTO-INDEX] Non-critical error: {e}")
 
         return {
             "prediction": formatted_pred,
@@ -213,4 +313,5 @@ def classify_audio(file: UploadFile = File(...)):
 
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

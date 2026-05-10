@@ -37,40 +37,8 @@ warnings.filterwarnings("ignore")
 # ==============================================================================
 # Notes: Sa=0, re=1(k), Re=2, ga=3(k), Ga=4, Ma=5, Ma'=6(t), Pa=7, dha=8(k), Dha=9, ni=10(k), Ni=11
 # Notes: Sa=0, re=1(k), Re=2, ga=3(k), Ga=4, Ma=5, Ma'=6(t), Pa=7, dha=8(k), Dha=9, ni=10(k), Ni=11
-RAGA_DB_V3 = {
-    "Bhairav": {
-        "notes": [0, 1, 4, 5, 7, 8, 11], "vadi": 8, "samvadi": 1,
-        "pakads": [[4, 5, 8], [8, 7, 5, 4, 1, 0]], "forbidden": [2, 3, 6, 9, 10], "time": "Dawn"
-    },
-    "Bhairavi": {
-        "notes": [0, 1, 3, 5, 7, 8, 10], "vadi": 5, "samvadi": 0,
-        "pakads": [[0, 10, 8, 7], [3, 1, 0]], "forbidden": [2, 4, 6, 9, 11], "time": "Morning"
-    },
-    "Yaman": {
-        "notes": [0, 2, 4, 6, 7, 9, 11], "vadi": 4, "samvadi": 11,
-        "pakads": [[11, 2, 4], [4, 6, 7], [7, 6, 4, 2, 0]], "forbidden": [1, 3, 5, 8, 10], "time": "Evening"
-    },
-    "Kedar": {
-        "notes": [0, 2, 5, 6, 7, 9], "vadi": 5, "samvadi": 9,
-        "pakads": [[5, 7, 6, 5], [0, 5], [7, 9, 7, 5]], "forbidden": [1, 3, 4, 8, 10, 11], "time": "Night"
-    },
-    "Malkauns": {
-        "notes": [0, 3, 5, 8, 10], "vadi": 5, "samvadi": 0,
-        "pakads": [[0, 3, 5, 3, 0], [8, 10, 8, 5]], "forbidden": [1, 2, 4, 6, 7, 9, 11], "time": "Midnight"
-    },
-    "Bageshri": {
-        "notes": [0, 2, 3, 5, 7, 9, 10], "vadi": 3, "samvadi": 10,
-        "pakads": [[10, 9, 5, 3], [5, 3, 2, 0]], "forbidden": [1, 4, 6, 8, 11], "time": "Night"
-    },
-    "Todi": {
-        "notes": [0, 1, 3, 6, 7, 8], "vadi": 8, "samvadi": 3,
-        "pakads": [[8, 7, 6, 5], [3, 1, 0], [6, 8, 10, 12]], "forbidden": [2, 4, 5, 9, 11], "time": "Morning"
-    },
-    "Jaunpuri": {
-        "notes": [0, 2, 3, 5, 7, 8, 10], "vadi": 8, "samvadi": 3,
-        "pakads": [[7, 8, 10, 7], [5, 3, 2, 0]], "forbidden": [1, 4, 6, 9, 11], "time": "Morning"
-    }
-}
+from raga_db import RAGA_DB_V3
+
 
 SWARA_NAMES = ["Sa", "re", "Re", "ga", "Ga", "Ma", "Ma'", "Pa", "dha", "Dha", "ni", "Ni"]
 

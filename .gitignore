@@ -17,3 +17,8 @@ dist/
 .DS_Store
 output/
 uploads/
+backend/vectorstore*/
+*.log
+*.pdf
+*.png
+*.db

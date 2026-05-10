@@ -19,6 +19,12 @@ import sys
 BASE_DIR = Path(__file__).parent.parent
 sys.path.append(str(BASE_DIR))
 
+from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
+
+load_dotenv(BASE_DIR / ".env")
+hf_token = os.getenv("HF_TOKEN")
+
 class HybridRagaVision:
     def __init__(self, model_id="laion/clap-htsat-fused"):
         print(f"[INIT] Loading Hybrid Neural-Symbolic Engine: {model_id}...")
@@ -26,6 +32,9 @@ class HybridRagaVision:
         self.processor = ClapProcessor.from_pretrained(model_id)
         self.model = ClapModel.from_pretrained(model_id).to(self.device)
         self.model.eval()
+        
+        # HF Client
+        self.hf_client = InferenceClient("mistralai/Mistral-7B-Instruct-v0.3", token=hf_token)
         
         # High-Precision Neural Mood Concepts (Global Context)
         self.neural_descriptions = [
@@ -43,7 +52,7 @@ class HybridRagaVision:
             self.text_embeds = outputs.text_embeds if hasattr(outputs, 'text_embeds') else (outputs.pooler_output if hasattr(outputs, 'pooler_output') else outputs[0])
             self.text_embeds = self.text_embeds / self.text_embeds.norm(p=2, dim=-1, keepdim=True)
 
-    def analyze(self, filepath, duration=30, original_filename="", file_id=None):
+    def analyze(self, filepath, duration=30, original_filename="", file_id=None, lang="en"):
         """
         Hyper-Spectral Semantic-Acoustic Fusion Pipeline (Modular Refactor)
         """
@@ -132,7 +141,6 @@ class HybridRagaVision:
         # =====================================================
         
         # --- PHASE 5: NEURAL MOOD (CLAP) ---
-        # Use first 5s for mood context
         mood_audio = chunks[0][:5*22050]
         mood_audio_48k = librosa.resample(mood_audio, orig_sr=22050, target_sr=48000)
         
@@ -163,24 +171,21 @@ class HybridRagaVision:
             try:
                 plot_spectrogram(chunks[0], 22050, str(spec_path))
                 spectrogram_url = f"/static/spec_{stem}.png"
-                
-                # Check if a pre-generated analysis image exists in the output folder
                 if output_image_path.exists():
                     image_url = f"/output/analysis_{stem}.png"
                 else:
-                    # Fallback: Generate Full Dashboard dynamically
                     dashboard_features = {
                         "_f0": first_f0,
                         "_voiced": first_voiced,
                         "swara_distribution": aggregated.get("swara_distribution", {}),
                         "prediction": res.get("prediction", "Unknown")
                     }
-                    confidence = res.get("confidence", 0.5)
+                    confidence_val = res.get("confidence", 0.5)
                     pred = res.get("prediction", "Day")
                     if pred == "Day":
-                        ranked = [("Day", confidence), ("Night", 1.0 - confidence)]
+                        ranked = [("Day", confidence_val), ("Night", 1.0 - confidence_val)]
                     else:
-                        ranked = [("Night", confidence), ("Day", 1.0 - confidence)]
+                        ranked = [("Night", confidence_val), ("Day", 1.0 - confidence_val)]
                     
                     plot_full_dashboard(dashboard_features, ranked, str(dash_path), stem)
                     image_url = f"/static/dash_{stem}.png"
@@ -193,10 +198,16 @@ class HybridRagaVision:
         S_db = librosa.power_to_db(S, ref=np.max)
         spec_data = ((S_db - S_db.min()) / (S_db.max() - S_db.min()) * 255).astype(np.uint8).tolist()
 
-        # Final narrative construction
-        narrative = res.get("note", "") + "\n\n" + "\n".join(res["analysis"]["dominant_features"])
-        if res["analysis"]["why_not_others"]:
-            narrative += "\n\nRejections:\n" + "\n".join(res["analysis"]["why_not_others"])
+        # AI Narrative Reasoning
+        swaras_detected = sorted(list(aggregated.get("swara_distribution", {}).keys()))
+        narrative = self.cognitive_reasoning(
+            raga=res["prediction"],
+            mood=neural_mood,
+            confidence=res["confidence"],
+            logic=res["analysis"]["dominant_features"],
+            swaras=swaras_detected,
+            lang=lang
+        )
 
         return {
             "prediction": res["prediction"],
@@ -204,60 +215,99 @@ class HybridRagaVision:
             "neural_mood": neural_mood,
             "detected_raag": res["prediction"],
             "confidence": res["confidence"],
-            "neural_confidence": res["confidence"], # Added for frontend compatibility
+            "neural_confidence": res["confidence"],
             "logic_score": res["confidence"],
             "spectrogram": spec_data,
             "image_url": image_url,
             "narrative": narrative,
             "metadata": {
                 "time": neural_mood,
-                "swaras": sorted(list(aggregated.get("swara_distribution", {}).keys())), # Convert to list for chips
+                "swaras": swaras_detected,
                 "advanced_features": {
                     **aggregated,
-                    "pitch_range": aggregated["pitch_range"][1] - aggregated["pitch_range"][0] # Convert to scalar for UI
+                    "pitch_range": aggregated["pitch_range"][1] - aggregated["pitch_range"][0]
                 }
             },
             "report": res["analysis"]["dominant_features"],
             "detailed_features": detailed_features,
             "pitch_contour_data": pitch_contour,
             "swara_distribution_data": aggregated.get("swara_distribution", {}),
-            "therapy": get_therapy_output({"metadata": aggregated}),
-            "therapy_recommendation": get_therapy_output({"metadata": aggregated}),
+            "therapy": get_therapy_output({"metadata": aggregated}, raga_name=res["prediction"]),
+            "therapy_recommendation": get_therapy_output({"metadata": aggregated}, raga_name=res["prediction"]),
             "spectrogram_url": spectrogram_url
         }
 
-    def cognitive_reasoning(self, raga, mood, confidence, logic, swaras):
+    def cognitive_reasoning(self, raga, mood, confidence, logic, swaras, lang="en"):
         """
-        Hyper-Advanced Reasoning Bridge: Uses Ollama if available, else highly specialized template.
+        Hyper-Advanced Reasoning Bridge: Uses HuggingFace Inference API for rich, multilingual narratives.
+        Falls back to a high-fidelity symbolic reasoning engine if API is unavailable.
         """
-        import requests
+        # 1. Fetch Raga Metadata for enriched reasoning
+        raga_info = RAGA_DB_V3.get(raga, {})
+        vadi = SWARA_NAMES[raga_info.get("vadi")] if raga_info.get("vadi") is not None else "N/A"
+        samvadi = SWARA_NAMES[raga_info.get("samvadi")] if raga_info.get("samvadi") is not None else "N/A"
+        rasa = raga_info.get("rasa", "Meditative")
+        optimal_time = raga_info.get("optimal_time", "N/A")
+        
+        lang_prompts = {
+            "en": "Provide a deep, professional musical analysis (3-4 sentences) explaining the melodic structure and emotional landscape.",
+            "hi": "इस राग की मधुर संरचना और भावनात्मक परिवेश की व्याख्या करते हुए एक विस्तृत संगीत विश्लेषण (3-4 वाक्य) प्रदान करें।",
+            "mr": "या रागाची सुरावली आणि भावनिक पैलू स्पष्ट करणारे सखोल संगीत विश्लेषण (3-4 वाक्य) द्या।",
+            "ta": "இந்த ராகத்தின் மெல்லிசை அமைப்பு மற்றும் உணர்ச்சிகரமான சூழலை விளக்கும் ஆழமான இசை ஆய்வை (3-4 வாக்கியங்கள்) வழங்கவும்."
+        }
+        
+        selected_prompt = lang_prompts.get(lang, lang_prompts["en"])
+        
         prompt = (
             f"As an AI Musicologist expert in Hindustani Classical Music, explain this result:\n"
             f"- Identified Raag: {raga}\n"
-            f"- Neural Mood Context: {mood}\n"
-            f"- Confidence: {confidence*100:.1f}%\n"
-            f"- Evidence: {', '.join(logic)}\n"
-            f"- Swaras Detected: {', '.join(swaras)}\n\n"
-            f"Provide a brief, professional, and insightful musical analysis (3-4 sentences)."
+            f"- Vadi (Dominant): {vadi}, Samvadi (Sub-dominant): {samvadi}\n"
+            f"- Emotional Rasa: {rasa}\n"
+            f"- Performance Context: {mood} ({optimal_time})\n"
+            f"- Evidence Detected: {', '.join(logic)}\n"
+            f"- Key Swaras Present: {', '.join(swaras)}\n\n"
+            f"{selected_prompt}"
         )
 
-        # Attempt Ollama reasoning
         try:
-            r = requests.post("http://localhost:11434/api/generate", 
-                              json={"model": "llama3", "prompt": prompt, "stream": False},
-                              timeout=2.0)
-            if r.status_code == 200:
-                print(f"[COGNITIVE] Reasoning generated by Ollama for {raga}.")
-                return r.json()["response"]
-        except Exception:
-            pass
-        
-        # Fallback optimized template reasoning
-        print("[COGNITIVE] Ollama offline. Using template reasoning.")
-        base = f"The {mood} mood was detected via multi-point temporal sampling ({confidence*100:.1f}%). "
-        if raga != "Unknown":
-            base += f"Raag {raga} was identified logically by the Swara presence of {', '.join(swaras)}. "
-            base += f"Grammatical evidence: {' '.join(logic[:2])}."
-        else:
-            base += "Melodic features were identified but didn't match a specific raga signature precisely."
-        return base
+            messages = [
+                {"role": "system", "content": "You are a world-class AI Musicologist. Your explanations are poetic yet technically accurate, focusing on the soul of the Raga."},
+                {"role": "user", "content": prompt}
+            ]
+            response = self.hf_client.chat_completion(
+                messages=messages,
+                max_tokens=300,
+                temperature=0.7
+            )
+            narrative = response.choices[0].message.content
+            # Remove any model prefixes like "Analysis:" or "Explanation:"
+            narrative = narrative.split(":", 1)[-1] if ":" in narrative[:20] else narrative
+            return narrative.strip()
+            
+        except Exception as e:
+            print(f"[HF FALLBACK] {e}. Generating high-fidelity symbolic narrative.")
+            
+            # --- HIGH-FIDELITY SYMBOLIC REASONING ENGINE ---
+            if raga == "Unknown":
+                return (
+                    f"The analysis detected a {mood}-aligned melodic structure with {confidence*100:.1f}% confidence. "
+                    f"While the swara distribution ({', '.join(swaras)}) shows characteristic patterns, "
+                    "it doesn't perfectly align with the core signatures in our classical database. "
+                    "This may be a transitional phrase or a less common variation."
+                )
+
+            # Construct a rich, non-robotic musical explanation
+            intro = f"The performance strongly evokes the character of Raag {raga}, identified through its distinct melodic signature. "
+            
+            # Add technical depth
+            structural = ""
+            if vadi != "N/A":
+                structural = f"The emphasis on {vadi} (Vadi) and {samvadi} (Samvadi) confirms the structural grammar of this Raag. "
+            
+            # Add evidence
+            evidence = f"Musical evidence includes {', '.join(logic[:2])}, which align with the expected melodic transitions. "
+            
+            # Add emotional context
+            mood_str = f"The {mood} mood matches the traditional '{optimal_time}' performance window, projecting a {rasa} rasa."
+            
+            return f"{intro}{structural}{evidence}{mood_str}"
